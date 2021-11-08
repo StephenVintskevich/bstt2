@@ -4,7 +4,7 @@ from bstt import Block, BlockSparseTensor
 
 
 class ALS(object):
-    def __init__(self, _bstt, _measurements, _values, _verbosity=0):
+    def __init__(self, _bstt, _measurements, _values, _localGramians=None, _verbosity=0):
         self.bstt = _bstt
         assert isinstance(_measurements, np.ndarray) and isinstance(_values, np.ndarray)
         assert len(_measurements) == self.bstt.order
@@ -16,21 +16,36 @@ class ALS(object):
         self.targetResidual = 1e-8
         self.minDecrease = 1e-4
 
+        if (not _localGramians): 
+            self.localGramians = [np.eye(d) for d in self.bstt.dimensions]
+        else:
+            assert isinstance(_localGramians,list) and len(_localGramians) == self.bstt.order
+            for i in range(len(_localGramians)):
+                lG = _localGramians[i]
+                assert isinstance(lG, np.ndarray) and lG.shape == (self.bstt.dimensions[i],self.bstt.dimensions[i])
+                assert np.all(np.linalg.eigvals(lG) >= 0) and np.allclose(lG, lG.T, rtol=1e-14, atol=1e-14)
+            self.localGramians =_localGramians
+    
         self.leftStack = [np.ones((len(self.values),1))] + [None]*(self.bstt.order-1)
         self.rightStack = [np.ones((len(self.values),1))]
+        self.leftGramianStack = [np.ones([1,1])]  + [None]*(self.bstt.order-1)
+        self.rightGramianStack = [np.ones([1,1])]
         self.bstt.assume_corePosition(self.bstt.order-1)
         while self.bstt.corePosition > 0:
             self.move_core('left')
 
     def move_core(self, _direction):
         assert len(self.leftStack) + len(self.rightStack) == self.bstt.order+1
+        assert len(self.leftGramianStack) + len(self.rightGramianStack) == self.bstt.order+1
         valid_stacks = all(entry is not None for entry in self.leftStack + self.rightStack)
         if self.verbosity >= 2 and valid_stacks:
             pre_res = self.residual()
         self.bstt.move_core(_direction)
         if _direction == 'left':
             self.leftStack.pop()
+            self.leftGramianStack.pop()
             self.rightStack.append(np.einsum('ler, ne, nr -> nl', self.bstt.components[self.bstt.corePosition+1], self.measurements[self.bstt.corePosition+1], self.rightStack[-1]))
+            self.rightGramianStack.append(np.einsum('ijk, lmn, jm,kn -> il', self.bstt.components[self.bstt.corePosition+1],  self.bstt.components[self.bstt.corePosition+1], self.localGramians[self.bstt.corePosition+1], self.rightGramianStack[-1]))
             if self.verbosity >= 2:
                 if valid_stacks:
                     print(f"move_core {self.bstt.corePosition+1} --> {self.bstt.corePosition}.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
@@ -38,7 +53,9 @@ class ALS(object):
                     print(f"move_core {self.bstt.corePosition+1} --> {self.bstt.corePosition}.")
         elif _direction == 'right':
             self.rightStack.pop()
+            self.rightGramianStack.pop()
             self.leftStack.append(np.einsum('nl, ne, ler -> nr', self.leftStack[-1], self.measurements[self.bstt.corePosition-1], self.bstt.components[self.bstt.corePosition-1]))
+            self.leftGramianStack.append(np.einsum('ijk, lmn, jm,il -> kn', self.bstt.components[self.bstt.corePosition-1],  self.bstt.components[self.bstt.corePosition-1], self.localGramians[self.bstt.corePosition-1], self.leftGramianStack[-1]))
             if self.verbosity >= 2:
                 if valid_stacks:
                     print(f"move_core {self.bstt.corePosition-1} --> {self.bstt.corePosition}.  (residual: {pre_res:.2e} --> {self.residual():.2e})")

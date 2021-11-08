@@ -1,7 +1,7 @@
 from math import comb, factorial
 
 import numpy as np
-from numpy.polynomial.legendre import legval
+from numpy.polynomial.legendre import legval,legmul,legint,legder
 from numpy.polynomial.hermite_e import hermeval
 
 from bstt import Block, BlockSparseTT
@@ -269,3 +269,29 @@ def recover_ml(_measures, _values, _degrees, _maxGroupSize, _maxIter=10, _maxSwe
         if _verbosity >= 1 and itr < _maxIter-1: print("-"*80)
     # print("="*80)
     return bstts
+
+
+def L2innerLegendre(c1, c2):
+    i = legint(legmul(c1, c2))
+    return legval(1, i) - legval(-1, i)
+
+def HkinnerLegendre(k):
+    assert isinstance(k, int) and k >= 0
+    def inner(c1, c2):
+        ret = L2innerLegendre(c1, c2)
+        for j in range(k):
+            c1 = legder(c1)
+            c2 = legder(c2)
+            ret += L2innerLegendre(c1, c2)
+        return ret
+    return inner
+
+def Gramian(d, inner):
+    matrix = np.empty((d,d))
+    e = lambda k: np.eye(1,d,k)[0]
+    for i in range(d):
+        ei = e(i)
+        for j in range(i+1):
+            ej = e(j)
+            matrix[i,j] = matrix[j,i] = inner(ei,ej)
+    return matrix
