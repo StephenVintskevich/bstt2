@@ -99,21 +99,10 @@ class ALS(object):
             Le,LP = np.linalg.eigh(LG[block[0],block[0]])
             Ee,EP = np.linalg.eigh(EG[block[1],block[1]])
             Re,RP = np.linalg.eigh(RG[block[2],block[2]])
-            L[:, block[0]] = L[:, block[0]]@LP
-            LG[block[0], block[0]] = LP.T@LG[block[0], block[0]]@LP
-            if self.bstt.corePosition > 0:
-                leftComp = self.bstt.components[self.bstt.corePosition-1]
-                leftComp[:,:,block[0]] = np.einsum('ijk,kl->ijl',leftComp[:,:,block[0]],LP)
-            
-            E[:, block[1]] = E[:, block[1]]@EP
-            
-            R[:, block[2]] = R[:, block[2]]@RP
-            RG[block[2], block[2]] = RP.T@RG[block[2], block[2]]@RP
-            if self.bstt.corePosition < self.bstt.order - 1:
-                rightComp = self.bstt.components[self.bstt.corePosition+1]
-                rightComp[block[2],:,:] = np.einsum('ij,jkl->ikl',RP.T,rightComp[block[2],:,:])
+          
 
             op = np.einsum('nl,ne,nr -> nler', L[:, block[0]], E[:, block[1]], R[:, block[2]])
+            op = np.einsum('nler, li,ej,rk -> nijk',op,LP,EP,RP)
             Op_blocks.append(op.reshape(N,-1))
             Weights.extend( np.einsum('i,j,k->ijk',Le,Ee,Re).reshape(-1))
         Op = np.concatenate(Op_blocks, axis=1)
@@ -122,7 +111,7 @@ class ALS(object):
         Op = Op@inverseWeightMatrix
         reg = LassoCV(cv=10, random_state=0).fit(Op, self.values)
         Res = reg.coef_
-        
+        #TODO transform back
         core[...] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
 
         if self.verbosity >= 2:
