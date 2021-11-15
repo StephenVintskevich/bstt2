@@ -1,3 +1,4 @@
+from math import comb
 import numpy as np
 from scipy.sparse import block_diag, diags
 
@@ -57,6 +58,8 @@ class Block(tuple):
         def disjoint_slices(_slc1, _slc2):
             return (_slc1.start <= _slc2.start and _slc1.stop <= _slc2.start) or _slc2.stop <= _slc1.start
         return all((slc1 == slc2 or disjoint_slices(slc1, slc2)) for slc1, slc2 in zip(self, _other))
+
+
 
 
 class BlockSparseTensor(object):
@@ -259,11 +262,87 @@ class BlockSparseTT(object):
     @property
     def order(self):
         return len(self.components)
+    
+    def increase_block(self,_deg,_u,_v,_direction):
+        if _direction == 'left':
+            slices = self.getUniqueSlices(0)
+            slc = slices[_deg]
+            assert self.corePosition > 0
+            assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
+            
+            self.components[self.corePosition-1] = np.insert(self.components[self.corePosition-1],slc.stop,_u,axis=2)
+            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_v,axis=0)
+            
+            for i  in range(len(self.blocks[self.corePosition])):
+                block = self.blocks[self.corePosition][i]
+                if block[0] == slc:
+                    self.blocks[self.corePosition][i] = Block((slice( block[0].start, block[0].stop+1),block[1],block[2]))
+                if block[0].start > slc.start:
+                    self.blocks[self.corePosition][i] = Block((slice( block[0].start+1, block[0].stop+1),block[1],block[2]))
+            for i in range(len(self.blocks[self.corePosition-1])):
+                block = self.blocks[self.corePosition-1][i]
+                if block[2] == slc:
+                    self.blocks[self.corePosition-1][i] = Block((block[0],block[1],slice(block[2].start,block[2].stop+1)))
+                if block[2].start > slc.start:
+                    self.blocks[self.corePosition-1][i] = Block((block[0],block[1],slice(block[2].start+1,block[2].stop+1)))
+
+        elif _direction == 'right':
+            slices = self.getUniqueSlices(2)
+            slc = slices[_deg]
+            assert self.corePosition < self.order-1
+            assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
+            
+            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_u,axis=2)
+            self.components[self.corePosition+1] = np.insert(self.components[self.corePosition+1],slc.stop,_v,axis=0)
+            
+            for i  in range(len(self.blocks[self.corePosition])):
+                block = self.blocks[self.corePosition][i]
+                if block[2] == slc:
+                    self.blocks[self.corePosition][i] = Block((block[0],block[1],slice(block[2].start,block[2].stop+1)))
+                if block[2].start > slc.start:
+                    self.blocks[self.corePosition][i] = Block((block[0],block[1],slice(block[2].start+1,block[2].stop+1)))
+            for i in  range(len(self.blocks[self.corePosition+1])):
+                block = self.blocks[self.corePosition+1][i]
+                if block[0] == slc:
+                    self.blocks[self.corePosition+1][i] = Block((slice(block[0].start,block[0].stop+1),block[1],block[2]))
+                if block[0].start > slc.start:
+                    self.blocks[self.corePosition+1][i] = Block((slice(block[0].start+1,block[0].stop+1),block[1],block[2]))
+       
+        self.verify()
+    
+    
+    
+    def getUniqueSlices(self,mode):
+        Blocks = self.blocks[self.corePosition]
+        slices = []
+        for block in Blocks:
+            if block[mode] not in slices:
+                slices.append(block[mode])
+            if len(slices)>1:
+                assert slices[-2].stop==slices[-1].start
+        return slices
+    
+    def getAllBlocksOfSlice(self,k,slc,mode):
+        Blocks = self.blocks[k]
+        blck = []
+        for block in Blocks:
+            if block[mode] == slc:
+                blck.append(block)
+        return blck
+
+    
+    
+    def MaxSize(self,r,k,_maxGroupSize=np.inf):
+        assert r >=0 and r < self.dimensions[0]
+        assert k >=0 and k < self.order-1
+        k+=1
+        mr, mk = self.dimensions[0]-1-r, self.order-k
+        return min(comb(k+r-1,k-1), comb(mk+mr-1, mk-1), _maxGroupSize)
 
     def move_core(self, _direction):
         assert isinstance(self.corePosition, int)
         assert _direction in ['left', 'right']
-
+        S = None
         if _direction == 'left':
             assert 0 < self.corePosition
 
@@ -287,6 +366,7 @@ class BlockSparseTT(object):
 
             self.__corePosition += 1
         self.verify()
+        return S.diagonal()
 
     def dofs(self):
         return sum(BlockSparseTensor.fromarray(comp, blks).dofs() for comp, blks in zip(self.components, self.blocks))

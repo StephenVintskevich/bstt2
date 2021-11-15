@@ -189,6 +189,19 @@ def legendre_measures(_points, _degree):
     assert ret.shape == (M, N, _degree+1)
     return ret
 
+def legendre_measures_grad(_points, _degree):
+    N,M = _points.shape
+    factors = np.sqrt(2*np.arange(_degree+1)+1)
+    ret = legval(_points, np.diag(factors)).T
+    assert ret.shape == (M, N, _degree+1)
+    ret_der = legval(_points, legder(np.diag(factors))).T
+    grad = []
+    for k in range(M):
+        ret_tmp = ret.copy()
+        ret_tmp[k,:,:] = ret_der[k,:,:]
+        grad.append(ret_tmp)
+    return grad
+
 
 def hermite_measures(_points, _degree):
     N,M = _points.shape

@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov 11 10:36:59 2021
+
+@author: goette
+"""
+
+from misc import random_homogenous_polynomial_sum
+import numpy as np
+order = 10
+degree = 4
+maxGroupSize=1
+
+bstt =random_homogenous_polynomial_sum([degree]*order, degree,maxGroupSize)
+
+bstt.assume_corePosition(bstt.order-1)
+while bstt.corePosition > 0:
+    bstt.move_core('left')
+bstt.move_core('right')
+bstt.move_core('right')
+print(bstt.corePosition)
+
+
+
+bstt.increase_block(1, bstt.components[2][:,:,1], bstt.components[3][1,:,:], 'right')
+
+
