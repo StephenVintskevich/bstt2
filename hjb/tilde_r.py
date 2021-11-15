@@ -36,6 +36,18 @@ def calc_tilde_r(t,x,vlist):
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[-2])
     return ret
 
+def calc_total_reward(t_vec,x,vlist):
+    rew=[]
+    for i in range(len(vlist)-1):
+        t = t_vec[i]
+        for s in np.linspace(t,t+tau_value_func,int(tau_value_func/tau)):
+            u = calc_u(s,x,vlist[:-i])
+            rew.append(calc_reward(s, x, u))
+            x=step(s,x,u)
+    ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[0])
+    return ret
+
+
 def calc_u( t, x, vlist):
    u_mat = np.tensordot(gradV(x,vlist[-1]), B, axes=((0),(0)))
    return -R_inv @ u_mat.T / 2
