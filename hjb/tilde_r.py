@@ -36,7 +36,7 @@ def calc_tilde_r(t,x,vlist):
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[-2])
     return ret
 
-def calc_total_reward(t_vec,x,vlist):
+def calc_total_reward(x,vlist):
     rew=[]
     for i in range(len(vlist)-1):
         t = t_vec[i]
