@@ -12,6 +12,8 @@ parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
 from tilde_r import calc_total_reward,calc_tilde_r
+
+import optimize
 from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, HkinnerLegendre  #, hermite_measures
 from als import ALS
 import numpy as np
