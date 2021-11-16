@@ -11,12 +11,12 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
-
-from tilde_r import calc_tilde_r
+from tilde_r import calc_total_reward,calc_tilde_r
 from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, HkinnerLegendre  #, hermite_measures
 from als import ALS
 import numpy as np
 import copy
+ 
 
 data = np.load('data.npy')
 t_vec = np.load("t_vec_p.npy")
@@ -32,11 +32,17 @@ print(f"Order {order}")
 print(f"degree {degree}")
 
 #generate sample data
-trainSampleSize = int(3000)
+trainSampleSize = int(1000)
 print(f"Sample Size {trainSampleSize}")
 train_points = 2*np.random.rand(trainSampleSize,order)-1
 train_measures = legendre_measures(train_points, degree)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
+
+testSampleSize = int(100)
+test_points = 2*np.random.rand(testSampleSize,order)-1
+test_measures = legendre_measures(test_points, degree)
+augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)
+
 
 f = lambda xs: np.linalg.norm(xs, axis=1)**2
 end_values = f(train_points)
@@ -92,3 +98,7 @@ for t in np.flipud(t_vec):
             count+=1
 
 
+
+test_values = calc_total_reward(test_points.T,vlist)
+for i in range(testSampleSize):
+    print(f"Test Value {i}: {test_values[i]}")
