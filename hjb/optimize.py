@@ -5,26 +5,25 @@ Created on Thu Feb  6 10:07:29 2020
 @author: sallandt
 """
 import numpy as np
-"""
-Calculates an optimal control using gradient descent of an optimal control problem
-\int_0^T x^t Q x + u^t R u dt
-where
-\dot x = A x + NL(x) + B u
-and T is the final time and t is the matrix transposed
-Variables:
-    A system matrix of size n,n
-    B system matrix of size n,control_dim
-    Q system matrix of size n,n
-    R system matrix of size control_dim,control_dim
-    tau time step in discretization of ODE
-    m Number of time steps, i.e. T = tau * m
-    n A.shape[1]
-    control_dim B.shape[1]
-    step is a function that solves the ODE, i.e.
-    x(tau) = step(x(0), u(0))
-"""
+# """
+# Calculates an optimal control using gradient descent of an optimal control problem
+# \int_0^T x^t Q x + u^t R u dt
+# where
+# \dot x = A x + NL(x) + B u
+# and T is the final time and t is the matrix transposed
+# Variables:
+#     A system matrix of size n,n
+#     B system matrix of size n,control_dim
+#     Q system matrix of size n,n
+#     R system matrix of size control_dim,control_dim
+#     tau time step in discretization of ODE
+#     m Number of time steps, i.e. T = tau * m
+#     n A.shape[1]
+#     control_dim B.shape[1]
+#     step is a function that solves the ODE, i.e.
+#     x(tau) = step(x(0), u(0))
+# """
 
-import xerus as xe
 import numpy as np
 from scipy import linalg as la
 import scipy
