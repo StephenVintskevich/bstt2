@@ -51,7 +51,7 @@ def calc_total_reward(x,steps, vlist):
         rew.append(calc_reward(t, x, u))
         x=step(t,x,u)
         u_opt.append(u)
-        if i%int(tau_value_func/tau) ==0: vlist.pop()
+        if i%int(tau_value_func/tau) ==9: vlist.pop()
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[0])
     u_opt  = np.reshape(np.array(u_opt),(u_opt[0].shape[0],len(u_opt)))
     return ret,u_opt

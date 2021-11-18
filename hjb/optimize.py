@@ -50,10 +50,10 @@ class Open_loop_solver:
             grad2 = self.gradJp(x0, u_opt)
             direction = -self.step_size*(grad2 + self.step_size_before*grad1)
             u_opt =  u_opt + direction
-            print('shapes in calc_optimal control grad2 t_steps',grad2.shape, self.t_steps.shape)
+            #print('shapes in calc_optimal control grad2 t_steps',grad2.shape, self.t_steps.shape)
             curr_gradient_norm = np.sqrt(np.trapz(grad2**2, self.t_steps))
             i0 += 1
-            if i0 % 100 == 0:
+            if i0 % 10 == 0:
                 print('i0, curr_gradient_norm', i0, curr_gradient_norm)
         # print('i0, curr_gradient_norm', i0, curr_gradient_norm)
         x_opt = self.solve_fixed_u(x0, u_opt)
@@ -73,7 +73,7 @@ class Open_loop_solver:
         ygrad = self.solve_fixed_u(x0, u)
         p = self.solve_peq(ygrad, u)
         c =  2*self.ode.R @ u +self.ode.B.T @ p
-        print('shapes in gradJp x0,u,p,c', x0.shape,u.shape,p.shape,c.shape)
+        #print('shapes in gradJp x0,u,p,c', x0.shape,u.shape,p.shape,c.shape)
         return c
 
 
