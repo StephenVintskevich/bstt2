@@ -7,6 +7,13 @@ Created on Fri Nov 12 09:55:05 2021
 """
 
 # , hermite_measures
+import os
+import sys
+
+currentdir = os.path.dirname(os.path.realpath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(parentdir)
+
 from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, HkinnerLegendre
 import ode
 import copy
@@ -14,15 +21,9 @@ import numpy as np
 from als import ALS
 import optimize
 from tilde_r import calc_tilde_r, calc_total_reward
-import os
-import sys
 import set_dynamics
 
-currentdir = os.path.dirname(os.path.realpath(__file__))
-parentdir = os.path.dirname(currentdir)
-sys.path.append(parentdir)
 
-from tilde_r import calc_total_reward,calc_tilde_r
 
 
  
@@ -45,7 +46,7 @@ print(f"degree {degree}")
 
 
 #generate sample data
-N = 3000
+N = 700
 trainSampleSize = int(N)
 print(f"Sample Size {trainSampleSize}")
 train_points = 2*np.random.rand(trainSampleSize, order)-1

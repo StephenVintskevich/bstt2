@@ -1,4 +1,3 @@
-import xerus as xe
 import numpy as np
 from scipy import linalg as la
 import scipy.integrate as integrate
