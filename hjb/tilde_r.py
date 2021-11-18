@@ -59,7 +59,7 @@ def calc_total_reward(x,steps, vlist):
     #         u = calc_u(s,x,vlist[:-i])
     #         rew.append(calc_reward(s, x, u))
     #         x=step(s,x,u)
-    ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[0])
+    ret = scipy.integrate.trapz(np.array(rew),axis=0)+calc_end_reward(0, x)#V(x,vlist[0])
     u_opt  = np.reshape(np.array(u_opt),(u_opt[0].shape[0],len(u_opt)))
     return ret,u_opt
 
@@ -102,7 +102,14 @@ def r( t, u):
 
 def calc_reward(t, x, u):
     return q(t, x) +  r(t, u)
-
+def calc_end_reward( t, x):
+        
+        #print("caLC_ENDREWARD", self.G(x))
+        #return self.G(x)
+    if len(x.shape) == 1:
+        return x.T @ Q_discr @ x/tau
+    else:
+        return np.einsum('il,ik,kl->l', x,Q_discr,x)/tau
 
 def V(x,v):
     order,samples = x.shape
