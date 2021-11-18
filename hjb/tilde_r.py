@@ -19,6 +19,7 @@ Q_discr =np.load('Q.npy')
 R_discr =np.load('R.npy')
 load_me = np.load('data.npy')
 t_vec = np.load('t_vec_p.npy')
+tau_value = t_vec[1]-t_vec[0]
 lambd = load_me[0]
 interval_half = load_me[2]
 tau = load_me[3]
@@ -36,18 +37,38 @@ def calc_tilde_r(t,x,vlist):
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[-2])
     return ret
 
-def calc_total_reward(x,vlist):
+def calc_total_reward(x,steps, vlist):
     rew=[]
+<<<<<<< HEAD
+    u_opt = []
+    for i in range(len(steps)):
+        t = steps[i]
+        j = t_to_ind(t)
+        print('j',j,'len(vlist_)',len(vlist))
+        #for s in np.linspace(t,t+tau_value_func,int(tau_value_func/tau)):
+            #print('len(vlist[:-1])',i,len(vlist[:i+1]))
+        #u = calc_u(s,x,vlist[:len(vlist)-1-i])
+        u  = calc_u(t,x,vlist)    
+        rew.append(calc_reward(t, x, u))
+        x=step(t,x,u)
+        u_opt.append(u)
+        if i%int(tau_value_func/tau) ==9: vlist.pop()
+=======
     for i in range(1,len(vlist)-1):
         t = t_vec[i]
         for s in np.linspace(t,t+tau_value_func,int(tau_value_func/tau)):
             u = calc_u(s,x,vlist[:-i])
             rew.append(calc_reward(s, x, u))
             x=step(s,x,u)
+>>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[0])
-    return ret
+    u_opt  = np.reshape(np.array(u_opt),(u_opt[0].shape[0],len(u_opt)))
+    return ret,u_opt
 
 
+def t_to_ind( t):
+        # print('t, t/self.tau, int(t/self.tau, int(np.round(t/self.tau))', t, t/self.tau, int(t/self.tau), int(np.round(t/self.tau, 8)))
+    return int(np.floor(t/tau_value_func))
 def calc_u( t, x, vlist):
    u_mat = np.tensordot(gradV(x,vlist[-1]), B, axes=((0),(0)))
    return -R_inv @ u_mat.T / 2
@@ -70,7 +91,7 @@ def f( t, x):
 
 
 def NL( t, x):
-    return x**3
+    return -x**3
 
 
 def g( t, x):    
