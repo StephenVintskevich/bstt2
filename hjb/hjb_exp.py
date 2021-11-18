@@ -46,7 +46,7 @@ print(f"degree {degree}")
 
 #generate sample data
 trainSampleSize = int(1000)
- print(f"Sample Size {trainSampleSize}")
+print(f"Sample Size {trainSampleSize}")
 train_points = 2*np.random.rand(trainSampleSize, order)-1
 train_measures = legendre_measures(train_points, degree)
 augmented_train_measures = np.concatenate(
