@@ -24,16 +24,9 @@ sys.path.append(parentdir)
 
 from tilde_r import calc_total_reward,calc_tilde_r
 
-<<<<<<< HEAD
-=======
-import optimize
-from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, HkinnerLegendre  #, hermite_measures
-from als import ALS
-import numpy as np
-import copy
+
  
 
->>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a
 data = np.load('data.npy')
 t_vec = np.load("t_vec_p.npy")
 T = t_vec[-1]
