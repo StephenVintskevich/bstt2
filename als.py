@@ -18,6 +18,7 @@ class ALS(object):
         self.values = _values
         self.verbosity = _verbosity
         self.maxSweeps = 100
+        self.initialSweeps = 2
         self.targetResidual = 1e-8
         self.minDecrease = 1e-4
         self.increaseRanks = False
@@ -81,11 +82,15 @@ class ALS(object):
         elif _direction == 'right':
             if self.increaseRanks:
                 slices =  self.bstt.getUniqueSlices(0)
-                for i,slc in zip(range(len(slices)),slices):
-                    if np.min(singValues[slc]) > self.smin and  slc.stop-slc.start < self.bstt.MaxSize(i,self.bstt.corePosition-1,self.maxGroupSize):
+                for i,slc in zip(reversed(range(len(slices))),reversed(slices)):
+                    if np.min(singValues[slc]) > self.smin and  slc.stop-slc.start < self.bstt.MaxSize(i,self.bstt.corePosition-1,self.maxGroupSize):                        
+                        assert np.allclose(np.einsum('ijk,ijl->kl', self.bstt.components[self.bstt.corePosition-1],self.bstt.components[self.bstt.corePosition-1]),np.eye(self.bstt.components[self.bstt.corePosition-1].shape[2]),rtol=1e-12,atol=1e-12)
                         u = self.calculate_update(slc,'left')
-                        self.bstt.increase_block(i,u,np.zeros([self.bstt.components[self.bstt.corePosition]]).shape[1:3],'left')
-
+                        self.bstt.increase_block(i,u,np.zeros(self.bstt.components[self.bstt.corePosition].shape[1:3]),'left')
+                        assert np.allclose(np.einsum('ijk,ijl->kl', self.bstt.components[self.bstt.corePosition-1],self.bstt.components[self.bstt.corePosition-1]),np.eye(self.bstt.components[self.bstt.corePosition-1].shape[2]),rtol=1e-12,atol=1e-12)
+                        if self.verbosity >= 2:
+                            print(f"Increased block {i} mode 2 of componment {self.bstt.corePosition-1}. Size before {slc.stop-slc.start}, size now {slc.stop-slc.start+1} of maximal Size {self.bstt.MaxSize(i,self.bstt.corePosition-1,self.maxGroupSize)}")
+                            
             self.rightStack.pop()
             self.rightH1GramianStack.pop()
             self.rightL2GramianStack.pop()
@@ -111,11 +116,11 @@ class ALS(object):
 
     def calculate_update(self,slc,_direction):
         if _direction == 'left':
-            Gramian = np.einsum('ij,kl->ijkl',self.leftH1GramianStack[-1],self.localH1Gramians[self.bstt.corePosition-1])
+            Gramian = np.einsum('ij,kl->ikjl',self.leftH1GramianStack[-1],self.localH1Gramians[self.bstt.corePosition-1])
             n = Gramian.shape[0]*Gramian.shape[1]
             basis = np.eye(n)
             basis = basis.reshape(Gramian.shape)
-            blocks = self.bstt.getAllBlocksOfSlice(self.corePosition-1,slc,2)
+            blocks = self.bstt.getAllBlocksOfSlice(self.bstt.corePosition-1,slc,2)
             for block in blocks:
                 basis[block[0],block[1],block[0],block[1]] = 0
             basis=basis.reshape(n,n)
@@ -123,7 +128,7 @@ class ALS(object):
             basis = np.concatenate([basis,left],axis = 1)
             ns = null_space(basis.T)
             assert ns.size > 0
-            ns = ns.reshape(Gramian.shape[0:2],-1)
+            ns = np.round(ns.reshape(*Gramian.shape[0:2],-1),decimals=14)
             projGramian = np.einsum('ijkl,ijm,kln->mn',Gramian,ns,ns)
             pGe, pGP = np.linalg.eigh(projGramian)
             return np.einsum('ijk,k->ij',ns,pGP[0])
@@ -147,7 +152,7 @@ class ALS(object):
         LGL2 = self.leftL2GramianStack[-1]
         EGL2 = self.localL2Gramians[self.bstt.corePosition]
         RGL2 = self.rightL2GramianStack[-1]
-        assert np.allclose(LGL2, np.eye(LGL2.shape[0]), rtol=1e-14, atol=1e-14)
+        assert np.allclose(LGL2, np.eye(LGL2.shape[0]), rtol=1e-12, atol=1e-12)
 
         Op_blocks = []
         Weights = []
@@ -190,7 +195,11 @@ class ALS(object):
         prev_residual = self.residual()
         self.smin = prev_residual*self.sminFactor
         if self.verbosity >= 1: print(f"Initial residuum: {prev_residual:.2e}")
+        increaseRanks = False #prepare initial sweeps before rank increase
+        if self.increaseRanks: increaseRanks = True; self.increaseRanks = False
         for sweep in range(self.maxSweeps):
+            if sweep >= self.initialSweeps and increaseRanks == True:
+                self.increaseRanks = True
             while self.bstt.corePosition < self.bstt.order-1:
                 self.microstep()
                 self.move_core('right')

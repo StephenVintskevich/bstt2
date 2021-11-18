@@ -4,13 +4,13 @@ import numpy as np
 from numpy.polynomial.legendre import legval,legmul,legint,legder
 from numpy.polynomial.hermite_e import hermeval
 
-from bstt import Block, BlockSparseTT
+from bstt import Block, BlockSparseTT, BlockSparseTTSystem
 from als import ALS
 
 
 class __block(object):
     def __getitem__(self, _slices):
-        assert len(_slices) == 3
+        assert len(_slices) == 3 or len(_slices) == 4
         assert all(isinstance(slc, (int, slice)) for slc in _slices)
         def as_slice(_slc):
             if isinstance(_slc, slice):
@@ -165,6 +165,41 @@ def random_homogenous_polynomial_sum(_univariateDegrees, _totalDegree, _maxGroup
     ranks.append(_totalDegree+1)
     blocks.append([block[d,d,0] for d in range(_totalDegree+1)])
     return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks)
+
+def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    assert len(_univariateDegrees) == len(_interactionranges)
+    assert isinstance(_interactionranges,list)
+    order = len(_univariateDegrees)
+
+    def MaxSize(r,k):
+        mr, mk = _totalDegree-r, order-k-2
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize)
+
+    dimensions = _univariateDegrees+1
+    blocks = [[block[0,l,0:_interactionranges[0],l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = []
+    for k in range(1, order-1):
+        mblocks = []
+        leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
+        leftSlices = np.cumsum([0] + leftSizes).tolist()
+        rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
+        rightSlices = np.cumsum([0] + rightSizes).tolist()
+        for l in range(_totalDegree+1):
+            for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+                m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+                mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, 0:_interactionranges[k], rightSlices[r]:rightSlices[r+1]])
+        ranks.append(leftSlices[-1])
+        blocks.append(mblocks)
+    ranks.append(_totalDegree+1)
+    blocks.append([block[l,d-l,0:_interactionranges[-1],d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    ranks.append(_totalDegree+1)
+    blocks.append([block[d,d,0:1,0] for d in range(_totalDegree+1)])
+    return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks)
+
+
 
 
 def max_group_size(_order, _degree):

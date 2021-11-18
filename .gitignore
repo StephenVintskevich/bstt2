@@ -4,3 +4,4 @@ __pycache__
 .cache
 figures
 *.ipynb_checkpoints
+*/*.nyp

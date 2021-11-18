@@ -39,6 +39,7 @@ def calc_tilde_r(t,x,vlist):
 
 def calc_total_reward(x,steps, vlist):
     rew=[]
+<<<<<<< HEAD
     u_opt = []
     for i in range(len(steps)):
         t = steps[i]
@@ -52,6 +53,14 @@ def calc_total_reward(x,steps, vlist):
         x=step(t,x,u)
         u_opt.append(u)
         if i%int(tau_value_func/tau) ==9: vlist.pop()
+=======
+    for i in range(1,len(vlist)-1):
+        t = t_vec[i]
+        for s in np.linspace(t,t+tau_value_func,int(tau_value_func/tau)):
+            u = calc_u(s,x,vlist[:-i])
+            rew.append(calc_reward(s, x, u))
+            x=step(s,x,u)
+>>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a
     ret = scipy.integrate.trapz(np.array(rew),axis=0)+V(x,vlist[0])
     u_opt  = np.reshape(np.array(u_opt),(u_opt[0].shape[0],len(u_opt)))
     return ret,u_opt

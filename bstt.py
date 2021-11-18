@@ -320,7 +320,7 @@ class BlockSparseTT(object):
                 slices.append(block[mode])
             if len(slices)>1:
                 assert slices[-2].stop==slices[-1].start
-        return slices
+        return sorted(slices)
     
     def getAllBlocksOfSlice(self,k,slc,mode):
         Blocks = self.blocks[k]
@@ -376,6 +376,218 @@ class BlockSparseTT(object):
         assert len(_ranks)+1 == len(_dimensions)
         ranks = [1] + _ranks + [1]
         components = [np.zeros((leftRank, dimension, rightRank)) for leftRank, dimension, rightRank in zip(ranks[:-1], _dimensions, ranks[1:])]
+        for comp, compBlocks in zip(components, _blocks):
+            for block in compBlocks:
+                comp[block] = np.random.randn(*comp[block].shape)
+        return cls(components, _blocks)
+    
+    
+    
+class BlockSparseTTSystem(object):
+    def __init__(self, _components, _blocks):
+        """
+        _components : list of ndarrays of order 3
+            The list of component tensors for the TTTensor.
+        _blocks : list of list of triples
+            For the k-th component tensor _blocks[k] contains the list of its blocks of non-zero values:
+                _blocks[k] --- list of non-zero blocks in the k-th component tensor
+            Each block is represented by a triple of integers and slices:
+                block = (slice(0,3), slice(0,4), slice(1,5))
+                componentTensor[block] == componentTensor[0:3, 0:4, 1:5]
+            To obtain the block this triple the slice in the component tensor:
+                _blocks[k][l] --- The l-th non-zero block for the k-th component tensor.
+                                  The coordinates are given by _components[k][_blocks[k][l]].
+
+        NOTE: Later we can remove _components and augment each triple in _blocks by an array that contains the data in this block.
+        """
+        assert all(cmp.ndim == 4 for cmp in _components)
+        assert _components[0].shape[0] == 1
+        assert all(cmp1.shape[3] == cmp2.shape[0] for cmp1,cmp2 in zip(_components[:-1], _components[1:]))
+        assert _components[-1].shape[3] == 1
+        self.components = _components
+
+        assert isinstance(_blocks, list) and len(_blocks) == self.order
+
+        for m, (comp, compBlocks) in enumerate(zip(self.components, _blocks)):
+            BlockSparseTensor.fromarray(comp, compBlocks)
+
+        self.blocks = _blocks
+
+        self.__corePosition = None
+        self.verify()
+
+    def verify(self):
+        for e, (compBlocks, component) in enumerate(zip(self.blocks, self.components)):
+            assert np.all(np.isfinite(component))
+            cmp = np.array(component)
+            for block in compBlocks:
+                cmp[block] = 0
+            assert np.allclose(cmp, 0), f"Component {e} does not satisfy the block structure. Error: {np.max(abs(cmp)):.2e}"
+
+    def evaluate(self, _measures):
+        assert self.order > 0 and len(_measures) == self.order
+        n = len(_measures[0])
+        ret = np.ones((n,1,self.order))
+        for pos in range(self.order):
+            ret = np.einsum('nlt,lesr,st,ne -> nrt', ret, self.components[pos], self.selectionMatrix(pos), _measures[pos])
+        assert ret.shape == (n,1,self.order)
+        return ret[:,0,:]
+
+    def selectionMatrix(self,k):
+        assert k >= 0 and k < self.order
+        interactionLength = self.interaction[k]
+        Smat = np.zeros([interactionLength,self.order])
+        row = 1
+        for i in range(self.order):
+            if np.abs(i-k) <= (interactionLength-1) // 2 and row < interactionLength:
+                Smat[row,i] = 1
+                row+=1
+            else:
+                Smat[0,i] = 1
+        print(k,"\n",Smat)
+        return Smat
+    
+    @property
+    def corePosition(self):
+        return self.__corePosition
+
+    def assume_corePosition(self, _position):
+        assert 0 <= _position and _position < self.order
+        self.__corePosition = _position
+
+    @property
+    def ranks(self):
+        return [cmp.shape[3] for cmp in self.components[:-1]]
+
+    @property
+    def dimensions(self):
+        return [cmp.shape[1] for cmp in self.components]
+    
+    @property
+    def interaction(self):
+        return [cmp.shape[2] for cmp in self.components]
+
+    @property
+    def order(self):
+        return len(self.components)
+    
+    def increase_block(self,_deg,_u,_v,_direction):
+        if _direction == 'left':
+            slices = self.getUniqueSlices(0)
+            slc = slices[_deg]
+            assert self.corePosition > 0
+            assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
+            
+            self.components[self.corePosition-1] = np.insert(self.components[self.corePosition-1],slc.stop,_u,axis=3)
+            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_v,axis=0)
+            
+            for i  in range(len(self.blocks[self.corePosition])):
+                block = self.blocks[self.corePosition][i]
+                if block[0] == slc:
+                    self.blocks[self.corePosition][i] = Block((slice( block[0].start, block[0].stop+1),block[1],block[2],block[3]))
+                if block[0].start > slc.start:
+                    self.blocks[self.corePosition][i] = Block((slice( block[0].start+1, block[0].stop+1),block[1],block[2],block[3]))
+            for i in range(len(self.blocks[self.corePosition-1])):
+                block = self.blocks[self.corePosition-1][i]
+                if block[3] == slc:
+                    self.blocks[self.corePosition-1][i] = Block((block[0],block[1],block[2],slice(block[3].start,block[3].stop+1)))
+                if block[3].start > slc.start:
+                    self.blocks[self.corePosition-1][i] = Block((block[0],block[1],block[2],slice(block[3].start+1,block[3].stop+1)))
+
+        elif _direction == 'right':
+            slices = self.getUniqueSlices(3)
+            slc = slices[_deg]
+            assert self.corePosition < self.order-1
+            assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
+            
+            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_u,axis=3)
+            self.components[self.corePosition+1] = np.insert(self.components[self.corePosition+1],slc.stop,_v,axis=0)
+            
+            for i  in range(len(self.blocks[self.corePosition])):
+                block = self.blocks[self.corePosition][i]
+                if block[3] == slc:
+                    self.blocks[self.corePosition][i] = Block((block[0],block[1],block[2],slice(block[3].start,block[3].stop+1)))
+                if block[3].start > slc.start:
+                    self.blocks[self.corePosition][i] = Block((block[0],block[1],block[2],slice(block[3].start+1,block[3].stop+1)))
+            for i in  range(len(self.blocks[self.corePosition+1])):
+                block = self.blocks[self.corePosition+1][i]
+                if block[0] == slc:
+                    self.blocks[self.corePosition+1][i] = Block((slice(block[0].start,block[0].stop+1),block[1],block[2],block[3]))
+                if block[0].start > slc.start:
+                    self.blocks[self.corePosition+1][i] = Block((slice(block[0].start+1,block[0].stop+1),block[1],block[2],block[3]))
+
+        self.verify()
+    
+    
+    
+    def getUniqueSlices(self,mode):
+        Blocks = self.blocks[self.corePosition]
+        slices = []
+        for block in Blocks:
+            if block[mode] not in slices:
+                slices.append(block[mode])
+            if len(slices)>1:
+                assert slices[-2].stop==slices[-1].start
+        return sorted(slices)
+    
+    def getAllBlocksOfSlice(self,k,slc,mode):
+        Blocks = self.blocks[k]
+        print(Blocks)
+        blck = []
+        for block in Blocks:
+            if block[mode] == slc:
+                blck.append(block)
+        return blck
+
+    
+    
+    def MaxSize(self,r,k,_maxGroupSize=np.inf):
+        assert r >=0 and r < self.dimensions[0]
+        assert k >=0 and k < self.order-1
+        k+=1
+        mr, mk = self.dimensions[0]-1-r, self.order-k
+        return min(comb(k+r-1,k-1), comb(mk+mr-1, mk-1), _maxGroupSize)
+
+    def move_core(self, _direction):
+        assert isinstance(self.corePosition, int)
+        assert _direction in ['left', 'right']
+        S = None
+        if _direction == 'left':
+            print(_direction)
+            assert 0 < self.corePosition
+
+            CORE = BlockSparseTensor.fromarray(self.components[self.corePosition], self.blocks[self.corePosition])
+            U, S, Vt = CORE.svd(0)
+
+            nextCore = self.components[self.corePosition-1]
+            print(self.components[self.corePosition-1].shape,self.components[self.corePosition].shape)
+            print(U.shape,S.shape,Vt.shape)
+            self.components[self.corePosition-1] = (nextCore.reshape(-1, nextCore.shape[3]) @ U @ S).reshape(nextCore.shape)
+            self.components[self.corePosition] = Vt
+
+            self.__corePosition -= 1
+        else:
+            assert self.corePosition < self.order-1
+
+            CORE = BlockSparseTensor.fromarray(self.components[self.corePosition], self.blocks[self.corePosition])
+            U, S, Vt = CORE.svd(3)
+
+            nextCore = self.components[self.corePosition+1]
+            self.components[self.corePosition] = Vt
+            self.components[self.corePosition+1] = (S @ U.T @ nextCore.reshape(nextCore.shape[0], -1)).reshape(nextCore.shape)
+
+            self.__corePosition += 1
+        self.verify()
+        return S.diagonal()
+
+    def dofs(self):
+        return sum(BlockSparseTensor.fromarray(comp, blks).dofs() for comp, blks in zip(self.components, self.blocks))
+
+    @classmethod
+    def random(cls, _dimensions, _ranks, _interactionranges, _blocks):
+        assert len(_ranks)+1 == len(_dimensions)
+        ranks = [1] + _ranks + [1]
+        components = [np.zeros((leftRank, dimension, intrange, rightRank)) for leftRank, dimension,intrange, rightRank in zip(ranks[:-1], _dimensions,_interactionranges, ranks[1:])]
         for comp, compBlocks in zip(components, _blocks):
             for block in compBlocks:
                 comp[block] = np.random.randn(*comp[block].shape)

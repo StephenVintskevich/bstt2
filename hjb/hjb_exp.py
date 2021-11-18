@@ -22,7 +22,18 @@ currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 
+from tilde_r import calc_total_reward,calc_tilde_r
 
+<<<<<<< HEAD
+=======
+import optimize
+from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, HkinnerLegendre  #, hermite_measures
+from als import ALS
+import numpy as np
+import copy
+ 
+
+>>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a
 data = np.load('data.npy')
 t_vec = np.load("t_vec_p.npy")
 T = t_vec[-1]
@@ -39,9 +50,10 @@ Schloegel_ode = ode.Ode()
 print(f"Order {order}")
 print(f"degree {degree}")
 
-# generate sample data
-trainSampleSize = int(100)#int(3000)
-print(f"Sample Size {trainSampleSize}")
+
+#generate sample data
+trainSampleSize = int(1000)
+ print(f"Sample Size {trainSampleSize}")
 train_points = 2*np.random.rand(trainSampleSize, order)-1
 train_measures = legendre_measures(train_points, degree)
 augmented_train_measures = np.concatenate(
@@ -51,6 +63,14 @@ augmented_train_measures = np.concatenate(
 def f(xs): return Schloegel_ode.calc_end_reward(0, xs.T)#np.linalg.norm(xs, axis=1)**2
 
 
+
+testSampleSize = int(100)
+test_points = 2*np.random.rand(testSampleSize,order)-1
+test_measures = legendre_measures(test_points, degree)
+augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)
+
+
+#f = lambda xs: np.linalg.norm(xs, axis=1)**2
 end_values = f(train_points)
 
 
@@ -103,6 +123,7 @@ for t in np.flipud(t_vec):
             solver.maxSweeps = maxSweeps
             solver.targetResidual = 1e-5
             solver.run()
+<<<<<<< HEAD
             count += 1
 
 print("vlist", len(vlist))
@@ -137,3 +158,12 @@ def calc_opt(x0, u0, calc_cost):
     return x_vec.T, u_vec.T, cost
 x_opt, u_opt, cost_opt = calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward)
 print("cost hjb", rew_hjb, 'cost opt', cost_opt)
+=======
+            count+=1
+
+
+
+test_values = calc_total_reward(test_points.T,vlist)
+for i in range(testSampleSize):
+    print(f"Test Value {i}: {test_values[i]}")
+>>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a

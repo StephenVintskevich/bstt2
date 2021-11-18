@@ -25,7 +25,6 @@ import numpy as np
 #    x(tau) = step(x(0), u(0))
 
 
-import xerus as xe
 import numpy as np
 from scipy import linalg as la
 import scipy
