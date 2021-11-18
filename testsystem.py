@@ -9,8 +9,8 @@ import numpy as np
 from misc import random_homogenous_polynomial_sum_system,random_homogenous_polynomial_sum,legendre_measures
 
 order = 8
-degree = 3
-maxGroupSize = 3
+degree = 2
+maxGroupSize = 1
 interaction = [3,4,4,4,4,4,4,3]
 trainSampleSize = 1
 
@@ -35,4 +35,14 @@ for pos in reversed(range(1,tt.order)):
     ret = np.einsum('nm,ikln,jklm -> ij', ret, tt.components[pos],tt.components[pos])
     print(ret.shape,"\n",np.around(ret,4),"\n",np.max(tt.components[pos]))
 
+tt.move_core('right')
+tt.move_core('right')
 
+a = tt.getAllBlocksOfSlice(1, slice(1,2,None), 3)
+u = np.zeros(tt.components[tt.corePosition-1][:,:,:,0].shape)
+for blk in a:
+    u[blk[0],blk[1],blk[2]] = np.random.rand(blk[0].stop-blk[0].start,blk[1].stop-blk[1].start,blk[2].stop-blk[2].start)
+
+tt.increase_block(1,u,np.zeros(tt.components[tt.corePosition][0,:,:,:].shape),'left')
+
+print(tt.blocks[tt.corePosition-1])

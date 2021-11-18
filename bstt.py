@@ -320,7 +320,7 @@ class BlockSparseTT(object):
                 slices.append(block[mode])
             if len(slices)>1:
                 assert slices[-2].stop==slices[-1].start
-        return slices
+        return sorted(slices)
     
     def getAllBlocksOfSlice(self,k,slc,mode):
         Blocks = self.blocks[k]
@@ -478,7 +478,7 @@ class BlockSparseTTSystem(object):
             assert self.corePosition > 0
             assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
             
-            self.components[self.corePosition-1] = np.insert(self.components[self.corePosition-1],slc.stop,_u,axis=2)
+            self.components[self.corePosition-1] = np.insert(self.components[self.corePosition-1],slc.stop,_u,axis=3)
             self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_v,axis=0)
             
             for i  in range(len(self.blocks[self.corePosition])):
@@ -489,9 +489,9 @@ class BlockSparseTTSystem(object):
                     self.blocks[self.corePosition][i] = Block((slice( block[0].start+1, block[0].stop+1),block[1],block[2],block[3]))
             for i in range(len(self.blocks[self.corePosition-1])):
                 block = self.blocks[self.corePosition-1][i]
-                if block[2] == slc:
+                if block[3] == slc:
                     self.blocks[self.corePosition-1][i] = Block((block[0],block[1],block[2],slice(block[3].start,block[3].stop+1)))
-                if block[2].start > slc.start:
+                if block[3].start > slc.start:
                     self.blocks[self.corePosition-1][i] = Block((block[0],block[1],block[2],slice(block[3].start+1,block[3].stop+1)))
 
         elif _direction == 'right':
@@ -500,14 +500,14 @@ class BlockSparseTTSystem(object):
             assert self.corePosition < self.order-1
             assert self.MaxSize(_deg,self.corePosition-1) > slc.stop - slc.start 
             
-            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_u,axis=2)
+            self.components[self.corePosition] = np.insert(self.components[self.corePosition],slc.stop,_u,axis=3)
             self.components[self.corePosition+1] = np.insert(self.components[self.corePosition+1],slc.stop,_v,axis=0)
             
             for i  in range(len(self.blocks[self.corePosition])):
                 block = self.blocks[self.corePosition][i]
-                if block[2] == slc:
+                if block[3] == slc:
                     self.blocks[self.corePosition][i] = Block((block[0],block[1],block[2],slice(block[3].start,block[3].stop+1)))
-                if block[2].start > slc.start:
+                if block[3].start > slc.start:
                     self.blocks[self.corePosition][i] = Block((block[0],block[1],block[2],slice(block[3].start+1,block[3].stop+1)))
             for i in  range(len(self.blocks[self.corePosition+1])):
                 block = self.blocks[self.corePosition+1][i]
@@ -515,7 +515,7 @@ class BlockSparseTTSystem(object):
                     self.blocks[self.corePosition+1][i] = Block((slice(block[0].start,block[0].stop+1),block[1],block[2],block[3]))
                 if block[0].start > slc.start:
                     self.blocks[self.corePosition+1][i] = Block((slice(block[0].start+1,block[0].stop+1),block[1],block[2],block[3]))
-       
+
         self.verify()
     
     
@@ -528,10 +528,11 @@ class BlockSparseTTSystem(object):
                 slices.append(block[mode])
             if len(slices)>1:
                 assert slices[-2].stop==slices[-1].start
-        return slices
+        return sorted(slices)
     
     def getAllBlocksOfSlice(self,k,slc,mode):
         Blocks = self.blocks[k]
+        print(Blocks)
         blck = []
         for block in Blocks:
             if block[mode] == slc:
