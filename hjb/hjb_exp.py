@@ -34,18 +34,19 @@ load_me = np.load('data.npy')
 tau = load_me[3]#t_vec[1]-t_vec[0]
 print(tau)
 order = int(data[4])
-degree = 3
-maxGroupSize = 2
-maxSweeps = 2
+degree = 7
+maxGroupSize = 3
+maxSweeps = 20
 tol = 1e-4
-maxPolIt = 1
+maxPolIt = 10
 Schloegel_ode = ode.Ode()
 print(f"Order {order}")
 print(f"degree {degree}")
 
 
 #generate sample data
-trainSampleSize = int(1000)
+N = 3000
+trainSampleSize = int(N)
 print(f"Sample Size {trainSampleSize}")
 train_points = 2*np.random.rand(trainSampleSize, order)-1
 train_measures = legendre_measures(train_points, degree)
@@ -116,7 +117,6 @@ for t in np.flipud(t_vec):
             solver.maxSweeps = maxSweeps
             solver.targetResidual = 1e-5
             solver.run()
-<<<<<<< HEAD
             count += 1
 
 print("vlist", len(vlist))
@@ -151,12 +151,9 @@ def calc_opt(x0, u0, calc_cost):
     return x_vec.T, u_vec.T, cost
 x_opt, u_opt, cost_opt = calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward)
 print("cost hjb", rew_hjb, 'cost opt', cost_opt)
-=======
-            count+=1
+      
 
 
 
-test_values = calc_total_reward(test_points.T,vlist)
-for i in range(testSampleSize):
-    print(f"Test Value {i}: {test_values[i]}")
->>>>>>> 6c8e9f308c21310a9d46d8d635db0cff76cd4a7a
+#test_values = calc_total_reward(test_points.T,vlist)
+

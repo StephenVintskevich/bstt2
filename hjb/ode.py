@@ -10,7 +10,7 @@ class Ode:
         self.B = np.load('B.npy')
         self.Q_discr =np.load('Q.npy')
         self.R_discr =np.load('R.npy')
-        load_me = np.load('save_me.npy')
+        load_me = np.load('data.npy')
         self.lambd = load_me[0]
         self.interval_half = load_me[2]
         self.tau = load_me[3]
@@ -73,11 +73,11 @@ class Ode:
 
 
     def q(self, t, x):
-        return 0
-#        if len(x.shape) == 1:
-#            return x.T @ self.Q_discr @ x
-#        else:
-#            return np.einsum('il,ik,kl->l', x,self.Q_discr,x)
+        #return 0
+        if len(x.shape) == 1:
+            return x.T @ self.Q_discr @ x
+        else:
+            return np.einsum('il,ik,kl->l', x,self.Q_discr,x)
 
     def r(self, t, u):
         if len(u.shape) == 1:

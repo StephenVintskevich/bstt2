@@ -33,7 +33,7 @@ import time
 class Open_loop_solver:
     def __init__(self, ode, optimize_params, calc_final = None, t_steps = None):
         self.ode = ode # need step adjoint(x, u); step(t, x, u)
-        load_me = np.load('save_me.npy')
+        load_me = np.load('data.npy')
         [self.step_size, self.step_size_before, self.max_iter, self.grad_tol] = optimize_params
         self.calc_final = calc_final
         self.t_steps = t_steps
@@ -52,7 +52,7 @@ class Open_loop_solver:
             #print('shapes in calc_optimal control grad2 t_steps',grad2.shape, self.t_steps.shape)
             curr_gradient_norm = np.sqrt(np.trapz(grad2**2, self.t_steps))
             i0 += 1
-            if i0 % 10 == 0:
+            if i0 % 100 == 0:
                 print('i0, curr_gradient_norm', i0, curr_gradient_norm)
         # print('i0, curr_gradient_norm', i0, curr_gradient_norm)
         x_opt = self.solve_fixed_u(x0, u_opt)
