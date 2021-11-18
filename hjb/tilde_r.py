@@ -38,7 +38,7 @@ def calc_tilde_r(t,x,vlist):
 
 def calc_total_reward(x,vlist):
     rew=[]
-    for i in range(len(vlist)-1):
+    for i in range(1,len(vlist)-1):
         t = t_vec[i]
         for s in np.linspace(t,t+tau_value_func,int(tau_value_func/tau)):
             u = calc_u(s,x,vlist[:-i])
