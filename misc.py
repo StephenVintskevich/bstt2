@@ -217,19 +217,21 @@ def monomial_measures(_points, _degree):
     return ret
 
 
-def legendre_measures(_points, _degree):
+def legendre_measures(_points, _degree,_a=-1,_b=1):
+    assert _a < _b
     N,M = _points.shape
-    factors = np.sqrt(2*np.arange(_degree+1)+1)
-    ret = legval(_points, np.diag(factors)).T
+    factors = np.sqrt(2/(_b-_a))*np.sqrt(2*np.arange(_degree+1)+1)
+    ret =  legval(2/(_b-_a)*(_points-_a)-1, np.diag(factors)).T
     assert ret.shape == (M, N, _degree+1)
     return ret
 
-def legendre_measures_grad(_points, _degree):
+def legendre_measures_grad(_points, _degree,_a=-1,_b=1):
+    assert _a < _b
     N,M = _points.shape
-    factors = np.sqrt(2*np.arange(_degree+1)+1)
-    ret = legval(_points, np.diag(factors)).T
+    factors = np.sqrt(2/(_b-_a))*np.sqrt(2*np.arange(_degree+1)+1)
+    ret = legval(2/(_b-_a)*(_points-_a)-1, np.diag(factors)).T
     assert ret.shape == (M, N, _degree+1)
-    ret_der = legval(_points, legder(np.diag(factors))).T
+    ret_der = legval(2/(_b-_a)*(_points-_a)-1, 2/(_b-_a)*legder(np.diag(factors))).T
     grad = []
     for k in range(M):
         ret_tmp = ret.copy()
@@ -321,25 +323,25 @@ def recover_ml(_measures, _values, _degrees, _maxGroupSize, _maxIter=10, _maxSwe
 
 def L2innerLegendre(c1, c2):
     i = legint(legmul(c1, c2))
-    return legval(1, i) - legval(-1, i)
+    return (legval(1, i) - legval(-1, i))
 
 def HkinnerLegendre(k):
     assert isinstance(k, int) and k >= 0
-    def inner(c1, c2):
+    def inner(c1, c2,_a,_b):
         ret = L2innerLegendre(c1, c2)
         for j in range(k):
-            c1 = legder(c1)
-            c2 = legder(c2)
+            c1 = 2/(_b-_a)*legder(c1)
+            c2 = 2/(_b-_a)*legder(c2)
             ret += L2innerLegendre(c1, c2)
         return ret
     return inner
 
-def Gramian(d, inner):
+def Gramian(d, inner,_a=-1,_b=1):
     matrix = np.empty((d,d))
     e = lambda k: np.eye(1,d,k)[0]
     for i in range(d):
         ei = e(i)
         for j in range(i+1):
             ej = e(j)
-            matrix[i,j] = matrix[j,i] = inner(ei,ej)
+            matrix[i,j] = matrix[j,i] = inner(ei,ej,_a,_b)
     return matrix

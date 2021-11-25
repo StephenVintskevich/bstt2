@@ -41,6 +41,8 @@ maxSweeps = 20
 tol = 1e-4
 maxPolIt = 10
 Schloegel_ode = ode.Ode()
+a=-2
+b=2
 print(f"Order {order}")
 print(f"degree {degree}")
 
@@ -49,8 +51,8 @@ print(f"degree {degree}")
 N = 700
 trainSampleSize = int(N)
 print(f"Sample Size {trainSampleSize}")
-train_points = 2*np.random.rand(trainSampleSize, order)-1
-train_measures = legendre_measures(train_points, degree)
+train_points = (b-a)*np.random.rand(trainSampleSize, order)+a
+train_measures = legendre_measures(train_points, degree,a,b)
 augmented_train_measures = np.concatenate(
     [train_measures, np.ones((1, trainSampleSize, degree+1))], axis=0)
 
