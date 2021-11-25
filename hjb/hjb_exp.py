@@ -145,15 +145,21 @@ opt_u_item.initialize_new(Schloegel_ode.calc_end_reward_grad, steps)
 def calc_opt(x0, u0, calc_cost):
     
     x_vec, u_vec = opt_u_item.calc_optimal_control(x0, u0)
+    u_hjb = u0
     cost = 1/2*calc_cost(0, x_vec[:, 0], u_vec[:, 0])
+    cost1 = 1/2*calc_cost(0, x_vec[:, 0], u_hjb[:, 0])
     for i0 in range(len(steps)-1):
         add_cost = calc_cost(steps[i0+1], x_vec[:,i0+1 ], u_vec[:, i0+1])
+        add_cost1 = calc_cost(steps[i0+1], x_vec[:,i0+1 ], u_hjb[:, i0+1])
         cost += add_cost
+        cost1 += add_cost1
     cost -= add_cost/2
     cost += Schloegel_ode.calc_end_reward(0, x_vec[:,-1])
-    return x_vec.T, u_vec.T, cost
-x_opt, u_opt, cost_opt = calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward)
-print("cost hjb", rew_hjb, 'cost opt', cost_opt)
+    cost1 -= add_cost1/2
+    cost1 += Schloegel_ode.calc_end_reward(0, x_vec[:,-1])
+    return x_vec.T, u_vec.T, cost,cost1
+x_opt, u_opt, cost_opt,cost1 = calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward)
+print("cost hjb", rew_hjb, 'cost opt', cost_opt, 'cost1',cost1)
       
 
 
