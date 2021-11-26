@@ -429,7 +429,7 @@ class BlockSparseTTSystem(object):
         n = len(_measures[0])
         ret = np.ones((n,1,self.order))
         for pos in range(self.order):
-            ret = np.einsum('nlt,lesr,st,ne -> nrt', ret, self.components[pos], self.selectionMatrix(pos), _measures[pos])
+            ret = np.einsum('nld,lemr,md,ne -> nrd', ret, self.components[pos], self.selectionMatrix(pos), _measures[pos])
         assert ret.shape == (n,1,self.order)
         return ret[:,0,:]
 
