@@ -384,7 +384,7 @@ class BlockSparseTT(object):
     
     
 class BlockSparseTTSystem(object):
-    def __init__(self, _components, _blocks):
+    def __init__(self, _components, _blocks,_selectionMatrix,_numberOfEquations=None):
         """
         _components : list of ndarrays of order 3
             The list of component tensors for the TTTensor.
@@ -400,6 +400,10 @@ class BlockSparseTTSystem(object):
 
         NOTE: Later we can remove _components and augment each triple in _blocks by an array that contains the data in this block.
         """
+        if not _numberOfEquations:
+            _numberOfEquations = len(_components)
+        assert callable(_selectionMatrix)
+        assert _numberOfEquations <= len(_components)
         assert all(cmp.ndim == 4 for cmp in _components)
         assert _components[0].shape[0] == 1
         assert all(cmp1.shape[3] == cmp2.shape[0] for cmp1,cmp2 in zip(_components[:-1], _components[1:]))
@@ -412,7 +416,8 @@ class BlockSparseTTSystem(object):
             BlockSparseTensor.fromarray(comp, compBlocks)
 
         self.blocks = _blocks
-
+        self.numberOfEquations = _numberOfEquations
+        self.selectionMatrix = _selectionMatrix
         self.__corePosition = None
         self.verify()
 
@@ -427,26 +432,13 @@ class BlockSparseTTSystem(object):
     def evaluate(self, _measures):
         assert self.order > 0 and len(_measures) == self.order
         n = len(_measures[0])
-        ret = np.ones((n,1,self.order))
+        ret = np.ones((n,1,self.numberOfEquations))
         for pos in range(self.order):
-            ret = np.einsum('nld,lemr,md,ne -> nrd', ret, self.components[pos], self.selectionMatrix(pos), _measures[pos])
-        assert ret.shape == (n,1,self.order)
+            ret = np.einsum('nld,lemr,md,ne -> nrd', ret, self.components[pos], self.selectionMatrix(pos,self.numberOfEquations), _measures[pos])
+        assert ret.shape == (n,1,self.numberOfEquations)
         return ret[:,0,:]
 
-    def selectionMatrix(self,k):
-        assert k >= 0 and k < self.order
-        interactionLength = self.interaction[k]
-        Smat = np.zeros([interactionLength,self.order])
-        row = 1
-        for i in range(self.order):
-            if np.abs(i-k) <= (interactionLength-1) // 2 and row < interactionLength:
-                Smat[row,i] = 1
-                row+=1
-            else:
-                Smat[0,i] = 1
-        print(k,"\n",Smat)
-        return Smat
-    
+
     @property
     def corePosition(self):
         return self.__corePosition
@@ -532,7 +524,6 @@ class BlockSparseTTSystem(object):
     
     def getAllBlocksOfSlice(self,k,slc,mode):
         Blocks = self.blocks[k]
-        print(Blocks)
         blck = []
         for block in Blocks:
             if block[mode] == slc:
@@ -553,15 +544,12 @@ class BlockSparseTTSystem(object):
         assert _direction in ['left', 'right']
         S = None
         if _direction == 'left':
-            print(_direction)
             assert 0 < self.corePosition
 
             CORE = BlockSparseTensor.fromarray(self.components[self.corePosition], self.blocks[self.corePosition])
             U, S, Vt = CORE.svd(0)
 
             nextCore = self.components[self.corePosition-1]
-            print(self.components[self.corePosition-1].shape,self.components[self.corePosition].shape)
-            print(U.shape,S.shape,Vt.shape)
             self.components[self.corePosition-1] = (nextCore.reshape(-1, nextCore.shape[3]) @ U @ S).reshape(nextCore.shape)
             self.components[self.corePosition] = Vt
 
@@ -584,11 +572,18 @@ class BlockSparseTTSystem(object):
         return sum(BlockSparseTensor.fromarray(comp, blks).dofs() for comp, blks in zip(self.components, self.blocks))
 
     @classmethod
-    def random(cls, _dimensions, _ranks, _interactionranges, _blocks):
+    def random(cls, _dimensions, _ranks, _interactionranges, _blocks,_numberOfEquations,_selectionMatrix):
         assert len(_ranks)+1 == len(_dimensions)
         ranks = [1] + _ranks + [1]
         components = [np.zeros((leftRank, dimension, intrange, rightRank)) for leftRank, dimension,intrange, rightRank in zip(ranks[:-1], _dimensions,_interactionranges, ranks[1:])]
         for comp, compBlocks in zip(components, _blocks):
             for block in compBlocks:
                 comp[block] = np.random.randn(*comp[block].shape)
-        return cls(components, _blocks)
+        return cls(components, _blocks,_selectionMatrix,_numberOfEquations)
+    
+    @classmethod
+    def zeros(cls, _dimensions, _ranks, _interactionranges, _blocks,_numberOfEquations,_selectionMatrix):
+        assert len(_ranks)+1 == len(_dimensions)
+        ranks = [1] + _ranks + [1]
+        components = [np.zeros((leftRank, dimension, intrange, rightRank)) for leftRank, dimension,intrange, rightRank in zip(ranks[:-1], _dimensions,_interactionranges, ranks[1:])]
+        return cls(components, _blocks,_selectionMatrix,_numberOfEquations)

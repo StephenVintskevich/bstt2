@@ -1,7 +1,7 @@
 #NOTE: This implementation is not meant to be memory efficient or fast but rather to test the approximation capabilities of the proposed model class.
 import numpy as np
-from sklearn.linear_model import LassoCV, RidgeCV
-from scipy.linalg import block_diag,null_space
+from sklearn.linear_model import LassoCV, RidgeCV, Ridge, Lasso
+from scipy.linalg import block_diag,null_space,eigh
 from bstt import Block, BlockSparseTensor, BlockSparseTT, BlockSparseTTSystem
 import sys
 from matplotlib import pyplot as plt
@@ -184,7 +184,7 @@ class ALS(object):
         inverseWeightMatrix = np.diag(np.reciprocal(Weights))
  
         OpTr = Op@Transform@inverseWeightMatrix
-        reg = LassoCV(eps=1e-7,cv=3, random_state=0,fit_intercept=False).fit(OpTr, self.values)
+        reg = LassoCV(eps=1e-5,cv=10, random_state=0,fit_intercept=False).fit(OpTr, self.values)
         Res = reg.coef_
 
         core[...] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
@@ -244,9 +244,10 @@ class ALSSystem(object):
         assert _maxGroupSize > 0
         assert len(_measurements) == self.bstt.order
         assert all(compMeas.shape == (len(_values), dim) for compMeas, dim in zip(_measurements, self.bstt.dimensions))
-        assert _values.shape == (_measurements.shape[1],self.bstt.order)
+        assert (_values.shape == (_measurements.shape[1],self.bstt.numberOfEquations)) 
         self.measurements = _measurements
-        self.values = _values
+        self.numberOfSamples = _measurements.shape[1]
+        self.values = _values.reshape(-1)
         self.verbosity = _verbosity
         self.maxSweeps = 100
         self.initialSweeps = 2
@@ -256,6 +257,7 @@ class ALSSystem(object):
         self.smin = 0.01
         self.sminFactor = 0.01
         self.maxGroupSize = _maxGroupSize
+        self.alpha = 0.1
         if (not _localH1Gramians): 
             self.localH1Gramians = [np.eye(d) for d in self.bstt.dimensions]
         else:
@@ -278,12 +280,12 @@ class ALSSystem(object):
                 assert np.all(eigs_tmp >=0) and np.allclose(lG, lG.T, rtol=1e-14, atol=1e-14)
             self.localL2Gramians =_localL2Gramians
     
-        self.leftStack = [np.ones((len(self.values),1,self.bstt.order))] + [None]*(self.bstt.order-1)
-        self.rightStack = [np.ones((len(self.values),1,self.bstt.order))]
-        self.leftH1GramianStack = [np.ones([1,1,self.bstt.order])]  + [None]*(self.bstt.order-1)
-        self.rightH1GramianStack = [np.ones([1,1,self.bstt.order])]
-        self.leftL2GramianStack = [np.ones([1,1,self.bstt.order])]  + [None]*(self.bstt.order-1)
-        self.rightL2GramianStack = [np.ones([1,1,self.bstt.order])]
+        self.leftStack = [np.ones((self.numberOfSamples,1,self.bstt.numberOfEquations))] + [None]*(self.bstt.order-1)
+        self.rightStack = [np.ones((self.numberOfSamples,1,self.bstt.numberOfEquations))]
+        self.leftH1GramianStack = [np.ones([1,1,self.bstt.numberOfEquations])]  + [None]*(self.bstt.order-1)
+        self.rightH1GramianStack = [np.ones([1,1,self.bstt.numberOfEquations])]
+        self.leftL2GramianStack = [np.ones([1,1,self.bstt.numberOfEquations])]  + [None]*(self.bstt.order-1)
+        self.rightL2GramianStack = [np.ones([1,1,self.bstt.numberOfEquations])]
 
         self.bstt.assume_corePosition(self.bstt.order-1)
         while self.bstt.corePosition > 0:
@@ -298,13 +300,16 @@ class ALSSystem(object):
         if self.verbosity >= 2 and valid_stacks:
             pre_res = self.residual()
         singValues = self.bstt.move_core(_direction)
+        #print(f"Core: {self.bstt.corePosition}: singVal: {singValues}")
         if _direction == 'left':
+            Smat =  self.bstt.selectionMatrix(self.bstt.corePosition+1,self.bstt.numberOfEquations)  
+            comp =  self.bstt.components[self.bstt.corePosition+1]         
             self.leftStack.pop()
             self.leftH1GramianStack.pop()
             self.leftL2GramianStack.pop()
-            self.rightStack.append(np.einsum('lesr, ne, sd, nrd -> nld', self.bstt.components[self.bstt.corePosition+1], self.measurements[self.bstt.corePosition+1], self.bstt.selectionMatrix(self.bstt.corePosition+1),self.rightStack[-1]))
-            self.rightH1GramianStack.append(np.einsum('ijsk, lmtn, jm,knd,sd,td -> ild', self.bstt.components[self.bstt.corePosition+1],  self.bstt.components[self.bstt.corePosition+1], self.localH1Gramians[self.bstt.corePosition+1], self.rightH1GramianStack[-1],self.bstt.selectionMatrix(self.bstt.corePosition+1),self.bstt.selectionMatrix(self.bstt.corePosition+1)))
-            self.rightL2GramianStack.append(np.einsum('ijsk, lmtn, jm,knd,sd,td -> ild', self.bstt.components[self.bstt.corePosition+1],  self.bstt.components[self.bstt.corePosition+1], self.localL2Gramians[self.bstt.corePosition+1], self.rightL2GramianStack[-1],self.bstt.selectionMatrix(self.bstt.corePosition+1),self.bstt.selectionMatrix(self.bstt.corePosition+1)))
+            self.rightStack.append(np.einsum('lesr, ne, sd, nrd -> nld', comp, self.measurements[self.bstt.corePosition+1], Smat,self.rightStack[-1]))
+            self.rightH1GramianStack.append(np.einsum('ijsk, lmtn, jm,knd,sd,td -> ild', comp,  comp, self.localH1Gramians[self.bstt.corePosition+1], self.rightH1GramianStack[-1],Smat,Smat))
+            self.rightL2GramianStack.append(np.einsum('ijsk, lmtn, jm,knd,sd,td -> ild', comp,  comp, self.localL2Gramians[self.bstt.corePosition+1], self.rightL2GramianStack[-1],Smat,Smat))
             if self.verbosity >= 2:
                 if valid_stacks:
                     print(f"move_core {self.bstt.corePosition+1} --> {self.bstt.corePosition}.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
@@ -321,13 +326,14 @@ class ALSSystem(object):
             #             assert np.allclose(np.einsum('ijk,ijl->kl', self.bstt.components[self.bstt.corePosition-1],self.bstt.components[self.bstt.corePosition-1]),np.eye(self.bstt.components[self.bstt.corePosition-1].shape[2]),rtol=1e-12,atol=1e-12)
             #             if self.verbosity >= 2:
             #                 print(f"Increased block {i} mode 2 of componment {self.bstt.corePosition-1}. Size before {slc.stop-slc.start}, size now {slc.stop-slc.start+1} of maximal Size {self.bstt.MaxSize(i,self.bstt.corePosition-1,self.maxGroupSize)}")
-                            
+            Smat =  self.bstt.selectionMatrix(self.bstt.corePosition-1,self.bstt.numberOfEquations)
+            comp = self.bstt.components[self.bstt.corePosition-1]                                 
             self.rightStack.pop()
             self.rightH1GramianStack.pop()
             self.rightL2GramianStack.pop()
-            self.leftStack.append(np.einsum('nld, ne, md, lemr -> nrd', self.leftStack[-1], self.measurements[self.bstt.corePosition-1], self.bstt.selectionMatrix(self.bstt.corePosition-1),self.bstt.components[self.bstt.corePosition-1]))
-            self.leftH1GramianStack.append(np.einsum('ijsk, lmtn, jm,ild,sd,td -> knd', self.bstt.components[self.bstt.corePosition-1],  self.bstt.components[self.bstt.corePosition-1], self.localH1Gramians[self.bstt.corePosition-1], self.leftH1GramianStack[-1],self.bstt.selectionMatrix(self.bstt.corePosition-1),self.bstt.selectionMatrix(self.bstt.corePosition-1)))
-            self.leftL2GramianStack.append(np.einsum('ijsk, lmtn, jm,ild,sd,td -> knd', self.bstt.components[self.bstt.corePosition-1],  self.bstt.components[self.bstt.corePosition-1], self.localL2Gramians[self.bstt.corePosition-1], self.leftL2GramianStack[-1],self.bstt.selectionMatrix(self.bstt.corePosition-1),self.bstt.selectionMatrix(self.bstt.corePosition-1)))
+            self.leftStack.append(np.einsum('nld, ne, md, lemr -> nrd', self.leftStack[-1], self.measurements[self.bstt.corePosition-1], Smat,comp))
+            self.leftH1GramianStack.append(np.einsum('ijsk, lmtn, jm,ild,sd,td -> knd', comp,  comp, self.localH1Gramians[self.bstt.corePosition-1], self.leftH1GramianStack[-1],Smat,Smat))
+            self.leftL2GramianStack.append(np.einsum('ijsk, lmtn, jm,ild,sd,td -> knd', comp,  comp, self.localL2Gramians[self.bstt.corePosition-1], self.leftL2GramianStack[-1],Smat,Smat))
             if self.verbosity >= 2:
                 if valid_stacks:
                     print(f"move_core {self.bstt.corePosition-1} --> {self.bstt.corePosition}.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
@@ -341,9 +347,9 @@ class ALSSystem(object):
         L = self.leftStack[-1]
         E = self.measurements[self.bstt.corePosition]
         R = self.rightStack[-1]
-        S = self.bstt.selectionMatrix(self.bstt.corePosition)
+        S = self.bstt.selectionMatrix(self.bstt.corePosition,self.bstt.numberOfEquations)
         pred = np.einsum('lesr,nld,ne,sd,nrd -> nd', core, L, E, S,R)
-        return np.linalg.norm(pred -  self.values) / np.linalg.norm(self.values)
+        return np.linalg.norm(pred.reshape(-1) -  self.values) / np.linalg.norm(self.values)
 
 
     # def calculate_update(self,slc,_direction):
@@ -373,12 +379,12 @@ class ALSSystem(object):
         core = self.bstt.components[self.bstt.corePosition]
         L = self.leftStack[-1]
         E = self.measurements[self.bstt.corePosition]
-        S = self.bstt.selectionMatrix(self.bstt.corePosition)
+        S = self.bstt.selectionMatrix(self.bstt.corePosition,self.bstt.numberOfEquations)
         R = self.rightStack[-1]
-        
         coreBlocks = self.bstt.blocks[self.bstt.corePosition]
-        N = self.values.shape[0]*self.values.shape[1]
         
+        SG = np.einsum('md,nd->mnd',S,S)
+    
         LGH1 = self.leftH1GramianStack[-1]
         EGH1 = self.localH1Gramians[self.bstt.corePosition]
         RGH1 = self.rightH1GramianStack[-1]
@@ -386,41 +392,61 @@ class ALSSystem(object):
         LGL2 = self.leftL2GramianStack[-1]
         EGL2 = self.localL2Gramians[self.bstt.corePosition]
         RGL2 = self.rightL2GramianStack[-1]
-        assert np.allclose(LGL2, np.eye(LGL2.shape[0]), rtol=1e-12, atol=1e-12)
+        
+       
 
         Op_blocks = []
         Weights = []
         Tr_blocks = []
         for block in coreBlocks:
             op = np.einsum('nld,ne,sd,nrd -> ndlesr', L[:, block[0],:], E[:, block[1]], S[block[2],:], R[:, block[3],:])
-            Op_blocks.append(op.reshape(N,-1))      
+            #Op_blocks.append(op.reshape(self.numberOfSamples*self.bstt.numberOfEquations,-1))      
             
-            # update stacks after diagonalization of left and right gramian
-            Le,LP = np.linalg.eigh(LGH1[block[0],block[0]])
-            Ee,EP = np.linalg.eigh(EGH1[block[1],block[1]])
-            Re,RP = np.linalg.eigh(RGH1[block[2],block[2]])
-            #assert np.allclose(LP.T@LGH1[block[0],block[0]]@LP, np.diag(Le), rtol=1e-12, atol=1e-12)
-            #assert np.allclose(RP.T@RGH1[block[2],block[2]]@RP, np.diag(Re), rtol=1e-12, atol=1e-12),RP.T@RGH1[block[2],block[2]]@RP
+            GH1 = np.einsum('ijd,ef,mnd,kld->iemkjfnl',LGH1[block[0],block[0],:],EGH1[block[1],block[1]],SG[block[2],block[2],:],RGH1[block[3],block[3],:]) 
+            GL2 = np.einsum('ijd,ef,mnd,kld->iemkjfnl',LGL2[block[0],block[0],:],EGL2[block[1],block[1]],SG[block[2],block[2],:],RGL2[block[3],block[3],:])
+
+            GH1 = GH1.reshape(np.prod(GH1.shape[0:4]),np.prod(GH1.shape[4:8]))
+            GL2 = GL2.reshape(np.prod(GL2.shape[0:4]),np.prod(GL2.shape[4:8]))
+            np.allclose(GH1,GH1.T, rtol=1e-14, atol=1e-8)
+            np.allclose(GL2,GL2.T, rtol=1e-14, atol=1e-8)
+
+            GH1e,GH1P = np.linalg.eigh(GH1)
+            np.allclose(GH1P.T@GH1@GH1P,np.eye(len(GH1)), rtol=1e-14, atol=1e-8)
+
+            GL2new = GH1P.T@GL2@GH1P
             
-            RPL2 = RP.T@RGL2[block[2],block[2]]@RP
-            Re = Re/np.diag(RPL2)
-            
-            tr = np.einsum('il,jm,kn->ijklmn',LP,EP,RP)
-            Tr_blocks.append(tr.reshape(Op_blocks[-1].shape[1],Op_blocks[-1].shape[1]))
-            
-            Weights.extend( np.einsum('i,j,k->ijk',Le,Ee,Re).reshape(-1))
+            #print(f"New: {GH1e}, \n{np.diag(GL2new)} \n {GH1e/np.diag(GL2new)}")
+            # GH1e = np.array([GH1e[k]/np.diag(GL2P)[k] if np.abs(np.diag(GL2P)[k]) > 1e-12 and np.abs(GH1e[k]) > 1e-12 else 0.0 for k in range(len(GL2P))])
+            Tr_blocks.append(GH1P.reshape(Op_blocks[-1].shape[1],Op_blocks[-1].shape[1]))
+            Weights.extend(GH1e/np.diag(GL2new))
+
         Op = np.concatenate(Op_blocks, axis=1)
-        Transform  = block_diag(*Tr_blocks)        
-        assert np.allclose(Transform@Transform.T, np.eye(Transform.shape[0]), rtol=1e-14, atol=1e-14)
-        
+
+        # UOp, SOp,VTOp = np.linalg.svd(Op)
+        # rank = np.sum(SOp > 1e-14)
+
+        # SOp = SOp[:rank]
+        # UOp = UOp[:,:rank]
+        # VTOp = VTOp[:rank,:]
+        # Op = UOp@np.diag(SOp)
+
+        Transform  = block_diag(*Tr_blocks) 
+        #Transform = np.eye(Op.shape[1])
+        Weights = np.array(Weights)
+        Weights[Weights < 1e-13] = 0
         Weights = np.sqrt(Weights)
-        inverseWeightMatrix = np.diag(np.reciprocal(Weights))
- 
+        inverseWeights = [1/w if np.abs(w) > 1e-10 else 0 for w in Weights ]
+        inverseWeightMatrix = np.diag(inverseWeights)
         OpTr = Op@Transform@inverseWeightMatrix
-        reg = LassoCV(eps=1e-7,cv=3, random_state=0,fit_intercept=False).fit(OpTr, self.values)
+        #reg = LassoCV(eps=1e-8,cv=4, random_state=0,fit_intercept=False).fit(Op, self.values)
+        #reg = LassoCV(cv=10, random_state=0,fit_intercept=False,alphas=[10**(-i) for i in range(1,10)]).fit(Op, self.values)
+        #reg = LassoCV(eps=1e-4,cv=10, random_state=0,fit_intercept=False).fit(OpTr, self.values)
+        #reg = RidgeCV(cv=10, fit_intercept=False,alphas=[10**(-i) for i in range(10)]).fit(Op, self.values)
+        reg = Ridge( fit_intercept=False,alpha=self.alpha).fit(Op, self.values)
         Res = reg.coef_
 
-        core[...] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
+        #core[...] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
+        core[...] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
 
         if self.verbosity >= 2:
             print(f"microstep.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
@@ -432,12 +458,15 @@ class ALSSystem(object):
         increaseRanks = False #prepare initial sweeps before rank increase
         if self.increaseRanks: increaseRanks = True; self.increaseRanks = False
         for sweep in range(self.maxSweeps):
+            self.alpha = 0.001 * prev_residual
             if sweep >= self.initialSweeps and increaseRanks == True:
                 self.increaseRanks = True
             while self.bstt.corePosition < self.bstt.order-1:
+                #print(f"Core: {self.bstt.corePosition}")
                 self.microstep()
                 self.move_core('right')
             while self.bstt.corePosition > 0:
+                #print(f"Core: {self.bstt.corePosition}")
                 self.microstep()
                 self.move_core('left')
 

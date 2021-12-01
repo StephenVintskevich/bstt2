@@ -141,14 +141,18 @@ def random_homogenous_polynomial_sum(_univariateDegrees, _totalDegree, _maxGroup
     assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
     order = len(_univariateDegrees)
 
+
+    if isinstance(_maxGroupSize, int):
+        _maxGroupSize = [_maxGroupSize]*len(_univariateDegrees)   
+
     def MaxSize(r,k):
-        mr, mk = _totalDegree-r, order-k-2
-        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize)
+        mr, mk = _totalDegree-r, order-k-1
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize[k])
 
     dimensions = _univariateDegrees+1
     blocks = [[block[0,l,l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
     ranks = []
-    for k in range(1, order-1):
+    for k in range(1, order):
         mblocks = []
         leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
         leftSlices = np.cumsum([0] + leftSizes).tolist()
@@ -160,13 +164,51 @@ def random_homogenous_polynomial_sum(_univariateDegrees, _totalDegree, _maxGroup
                 mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, rightSlices[r]:rightSlices[r+1]])
         ranks.append(leftSlices[-1])
         blocks.append(mblocks)
-    ranks.append(_totalDegree+1)
-    blocks.append([block[l,d-l,d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    #ranks.append(_totalDegree+1)
+    #blocks.append([block[l,d-l,d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
     ranks.append(_totalDegree+1)
     blocks.append([block[d,d,0] for d in range(_totalDegree+1)])
     return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks)
 
-def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize):
+def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    assert len(_univariateDegrees) == len(_interactionranges)
+    assert isinstance(_interactionranges,list)
+    order = len(_univariateDegrees)
+    
+    
+    
+
+    def MaxSize(r,k):
+        mr, mk = _totalDegree-r, order-k-1
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize)
+
+    dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+
+    blocks = [[block[0,l,0:_interactionranges[0],l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = []
+    for k in range(1, order):
+        mblocks = []
+        leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
+        leftSlices = np.cumsum([0] + leftSizes).tolist()
+        rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
+        rightSlices = np.cumsum([0] + rightSizes).tolist()
+        for l in range(_totalDegree+1):
+            for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+                m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+                mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, 0:_interactionranges[k], rightSlices[r]:rightSlices[r+1]])
+        ranks.append(leftSlices[-1])
+        blocks.append(mblocks)
+    #ranks.append(_totalDegree+1)
+    #blocks.append([block[l,d-l,0:_interactionranges[-1],d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    ranks.append(_totalDegree+1)
+    blocks.append([block[d,_totalDegree-d,0,0] for d in range(_totalDegree+1)])
+    return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
+
+def zeros_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
     _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
     assert isinstance(_totalDegree, int) and _totalDegree >= 0
     assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
@@ -179,6 +221,8 @@ def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionrang
         return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize)
 
     dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+
     blocks = [[block[0,l,0:_interactionranges[0],l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
     ranks = []
     for k in range(1, order-1):
@@ -196,8 +240,9 @@ def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionrang
     ranks.append(_totalDegree+1)
     blocks.append([block[l,d-l,0:_interactionranges[-1],d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
     ranks.append(_totalDegree+1)
-    blocks.append([block[d,d,0:1,0] for d in range(_totalDegree+1)])
-    return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks)
+    blocks.append([block[d,_totalDegree-d,0,0] for d in range(_totalDegree+1)])
+    return BlockSparseTTSystem.zeros(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
+
 
 
 
@@ -284,6 +329,22 @@ def random_full(_univariateDegrees, _ranks):
     ranks = [1] + np.minimum(maxTheoreticalRanks, _ranks).tolist() + [1]
     blocks = [[block[0:ranks[m],0:dimensions[m],0:ranks[m+1]]] for m in range(order)]
     return BlockSparseTT.random(dimensions, ranks[1:-1], blocks)
+
+
+def random_full_system(_univariateDegrees, _interactionranges, _ranks):
+    """
+    Create a randomly initialized TT with the given rank.
+
+    Note that this TT  will not have sparse blocks!
+    """
+    order = len(_univariateDegrees)
+    dimensions = [dim+1 for dim in _univariateDegrees]
+    maxTheoreticalRanks = np.minimum(np.cumprod(dimensions[:-1]), np.cumprod(dimensions[1:][::-1])[::-1])
+    ranks = [1] + np.minimum(maxTheoreticalRanks, _ranks).tolist() + [1]
+    blocks = [[block[0:ranks[m],0:dimensions[m],0:_interactionranges[m],0:ranks[m+1]]] for m in range(order)]
+    return BlockSparseTTSystem.random(dimensions, ranks[1:-1],_interactionranges, blocks,order)
+
+
 
 
 def recover_ml(_measures, _values, _degrees, _maxGroupSize, _maxIter=10, _maxSweeps=100, _targetResidual=1e-12, _verbosity=0):
