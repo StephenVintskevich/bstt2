@@ -33,7 +33,7 @@ class Ode:
 
 
     def rhs_schloegl(self, t, x, u):
-        return u                      #self.f(t, x) + self.g(t, x) @ u
+        return self.f(t, x) + self.g(t, x) @ u
 
     def step_adjoint(self, t, p, x):
         return np.dot(self.A_tilde_T, p + self.tau*(self.NL_adjoint(t, p,x) + 2*self.Q@x ))
@@ -42,7 +42,7 @@ class Ode:
     def NL_adjoint(self, t, p, x):
         # return 0         # lin
         #print('norm x und p', np.linalg.norm(x), np.linalg.norm(p))
-        return -3*x**2*p   # schloegl
+        return 3*x**2*p   # schloegl
         # return (-3*x**2 + 1)*p   # allen-kahn
 
 
@@ -51,7 +51,7 @@ class Ode:
 
 
     def NL(self, t, x):
-        return -x**3
+        return x**3
 
 
     def g(self, t, x):
