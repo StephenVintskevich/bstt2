@@ -8,7 +8,7 @@ Created on Wed Nov 17 10:25:27 2021
 import numpy as np 
 from misc import  __block, random_homogenous_polynomial_sum_system,zeros_homogenous_polynomial_sum_system,monomial_measures,legendre_measures,Gramian, HkinnerLegendre,random_full_system
 from helpers import fermi_pasta_ulam
-from als import ALSSystem
+from als_l1_test import ALSSystem
 from bstt import Block, BlockSparseTT,BlockSparseTTSystem
 block = __block()
 
@@ -20,7 +20,7 @@ degree = 3
 maxGroupSize = 2
 interaction = [3]+ [4] + [5]*(order-4) + [4] + [3]
 ranks = [4,4,4,4]
-trainSampleSize = 750
+trainSampleSize = 10
 maxSweeps=20
 eq = 3
 
@@ -245,7 +245,7 @@ for i in range(4**7):
 
 bstt_test = BlockSparseTTSystem.random([degree+1]*(order+1), bstt_ex.ranks,bstt_ex.interaction,  blocks, order,selectionMatrix)
 bstt_test = bstt_ex
-bstt_test = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix)
+#bstt_test = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix)
 print(bstt_test.ranks)
 print(bstt_test.interaction)
 #bstt = random_full_system([degree]*order,interaction,ranks)
@@ -256,27 +256,27 @@ localL2Gramians = [np.eye(degree+1) for i in range(order)]
 localL2Gramians.append(np.ones([degree+1,degree+1]))
 
 # #solver = ALSSystem(bstt_test, train_measures,  train_values,_localL2Gramians=localL2Gramians,_localH1Gramians=localH1Gramians,_verbosity=1)
-solver = ALSSystem(bstt_test, augmented_train_measures,  train_values,_verbosity=1)
+solver = ALSSystem(bstt_test, augmented_train_measures,  train_values,_verbosity=2)
 solver.maxSweeps = maxSweeps
 solver.targetResidual = 2e-8
 #solver.increaseRanks=increaseRanks
 solver.maxGroupSize=maxGroupSize
 solver.run()
 
-for i in range(4**7):
-    meas = np.zeros([7,1,4])
-    a = [i //(4**(j-1)) % 4 for j in range(1,8)]
-    meas[0,0,a[0]] = 1
-    meas[1,0,a[1]] = 1
-    meas[2,0,a[2]] = 1
-    meas[3,0,a[3]] = 1
-    meas[4,0,a[4]] = 1
-    meas[5,0,a[5]] = 1
-    meas[6,0,a[6]] = 1
-    val = bstt_ex.evaluate(meas)
-    val2 = bstt_test.evaluate(meas)
-    if np.linalg.norm(val) != 0:
-        print(a,": ",val,", ",val2)
+# for i in range(4**7):
+#     meas = np.zeros([7,1,4])
+#     a = [i //(4**(j-1)) % 4 for j in range(1,8)]
+#     meas[0,0,a[0]] = 1
+#     meas[1,0,a[1]] = 1
+#     meas[2,0,a[2]] = 1
+#     meas[3,0,a[3]] = 1
+#     meas[4,0,a[4]] = 1
+#     meas[5,0,a[5]] = 1
+#     meas[6,0,a[6]] = 1
+#     val = bstt_ex.evaluate(meas)
+#     val2 = bstt_test.evaluate(meas)
+#     if np.linalg.norm(val) != 0:
+#         print(a,": ",val,", ",val2)
 
 
 testSampleSize = int(1e5)

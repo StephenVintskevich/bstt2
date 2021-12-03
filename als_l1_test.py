@@ -247,7 +247,7 @@ class ALSSystem(object):
         assert (_values.shape == (_measurements.shape[1],self.bstt.numberOfEquations)) 
         self.measurements = _measurements
         self.numberOfSamples = _measurements.shape[1]
-        self.values = _values.reshape(-1)
+        self.values = _values
         self.verbosity = _verbosity
         self.maxSweeps = 100
         self.initialSweeps = 2
@@ -349,7 +349,7 @@ class ALSSystem(object):
         R = self.rightStack[-1]
         S = self.bstt.selectionMatrix(self.bstt.corePosition,self.bstt.numberOfEquations)
         pred = np.einsum('lesr,nld,ne,sd,nrd -> nd', core, L, E, S,R)
-        return np.linalg.norm(pred.reshape(-1) -  self.values) / np.linalg.norm(self.values)
+        return np.linalg.norm(pred.reshape(-1) -  self.values.reshape(-1)) / np.linalg.norm(self.values.reshape(-1))
 
 
     # def calculate_update(self,slc,_direction):
@@ -376,7 +376,6 @@ class ALSSystem(object):
         if self.verbosity >= 2:
             pre_res = self.residual()
 
-        core = self.bstt.components[self.bstt.corePosition]
         L = self.leftStack[-1]
         E = self.measurements[self.bstt.corePosition]
         S = self.bstt.selectionMatrix(self.bstt.corePosition,self.bstt.numberOfEquations)
@@ -400,54 +399,34 @@ class ALSSystem(object):
         Tr_blocks = []
         for block in coreBlocks:
             op = np.einsum('nld,ne,sd,nrd -> ndlesr', L[:, block[0],:], E[:, block[1]], S[block[2],:], R[:, block[3],:])
-            Op_blocks.append(op.reshape(self.numberOfSamples*self.bstt.numberOfEquations,-1))      
+            Op_blocks.append(op)      
             
-            GH1 = np.einsum('ijd,ef,mnd,kld->iemkjfnl',LGH1[block[0],block[0],:],EGH1[block[1],block[1]],SG[block[2],block[2],:],RGH1[block[3],block[3],:]) 
-            GL2 = np.einsum('ijd,ef,mnd,kld->iemkjfnl',LGL2[block[0],block[0],:],EGL2[block[1],block[1]],SG[block[2],block[2],:],RGL2[block[3],block[3],:])
 
-            GH1 = GH1.reshape(np.prod(GH1.shape[0:4]),np.prod(GH1.shape[4:8]))
-            GL2 = GL2.reshape(np.prod(GL2.shape[0:4]),np.prod(GL2.shape[4:8]))
-            np.allclose(GH1,GH1.T, rtol=1e-14, atol=1e-8)
-            np.allclose(GL2,GL2.T, rtol=1e-14, atol=1e-8)
-
-            GH1e,GH1P = np.linalg.eigh(GH1)
-            np.allclose(GH1P.T@GH1@GH1P,np.eye(len(GH1)), rtol=1e-14, atol=1e-8)
-
-            GL2new = GH1P.T@GL2@GH1P
+        core = np.zeros(self.bstt.components[self.bstt.corePosition].shape)
+        shape = (core.shape[0],core.shape[1],core.shape[3])
+        reducedBlocks = [Block((b[0],b[1],b[3])) for b in coreBlocks]
+        for k in range(self.bstt.interaction[self.bstt.corePosition]):
+            Op_blocks_eq = []
+            eqs = [True if S[k,l] == 1 else False for l in range(self.bstt.numberOfEquations)]
+            print(eqs)
+            for o in Op_blocks:
+                Op_blocks_eq.append(o[:,eqs,:,:,k,:].reshape(self.numberOfSamples*np.sum(eqs),-1))
             
-            #print(f"New: {GH1e}, \n{np.diag(GL2new)} \n {GH1e/np.diag(GL2new)}")
-            # GH1e = np.array([GH1e[k]/np.diag(GL2P)[k] if np.abs(np.diag(GL2P)[k]) > 1e-12 and np.abs(GH1e[k]) > 1e-12 else 0.0 for k in range(len(GL2P))])
-            Tr_blocks.append(GH1P.reshape(Op_blocks[-1].shape[1],Op_blocks[-1].shape[1]))
-            Weights.extend(GH1e/np.diag(GL2new))
-
-        Op = np.concatenate(Op_blocks, axis=1)
-
-        # UOp, SOp,VTOp = np.linalg.svd(Op)
-        # rank = np.sum(SOp > 1e-14)
-
-        # SOp = SOp[:rank]
-        # UOp = UOp[:,:rank]
-        # VTOp = VTOp[:rank,:]
-        # Op = UOp@np.diag(SOp)
-
-        Transform  = block_diag(*Tr_blocks) 
-        #Transform = np.eye(Op.shape[1])
-        Weights = np.array(Weights)
-        Weights[Weights < 1e-13] = 0
-        Weights = np.sqrt(Weights)
-        inverseWeights = [1/w if np.abs(w) > 1e-10 else 0 for w in Weights ]
-        inverseWeightMatrix = np.diag(inverseWeights)
-        OpTr = Op@Transform@inverseWeightMatrix
-        #reg = LassoCV(eps=1e-8,cv=4, random_state=0,fit_intercept=False).fit(Op, self.values)
-        #reg = LassoCV(cv=10, random_state=0,fit_intercept=False,alphas=[10**(-i) for i in range(1,10)]).fit(Op, self.values)
-        #reg = LassoCV(eps=1e-4,cv=10, random_state=0,fit_intercept=False).fit(OpTr, self.values)
-        #reg = RidgeCV(cv=10, fit_intercept=False,alphas=[10**(-i) for i in range(10)]).fit(Op, self.values)
-        reg = Ridge( fit_intercept=False,alpha=self.alpha).fit(Op, self.values)
-        Res = reg.coef_
-
-        #core[...] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
-        core[...] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
-
+            Op = np.concatenate(Op_blocks_eq, axis=1)
+            rhs = self.values[:,eqs].reshape(-1)
+               
+            reg = Ridge( fit_intercept=False,alpha=self.alpha).fit(Op, rhs)
+            Res = reg.coef_
+            tmp = BlockSparseTensor.fromarray( self.bstt.components[self.bstt.corePosition][:,:,k,:],reducedBlocks)
+            print(Op.shape,tmp.shape)
+            print(rhs,Op@tmp)
+            
+            print(Res,tmp.data )
+            core[:,:,k,:] = BlockSparseTensor(Res, reducedBlocks, shape).toarray()
+            if self.bstt.corePosition == 0:
+                exit()
+            
+        self.bstt.components[self.bstt.corePosition] = core
         if self.verbosity >= 2:
             print(f"microstep.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
 

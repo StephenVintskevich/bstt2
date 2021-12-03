@@ -8,7 +8,7 @@ Created on Wed Nov 17 10:25:27 2021
 import numpy as np 
 from misc import  __block, random_homogenous_polynomial_sum_system,random_homogenous_polynomial_sum,zeros_homogenous_polynomial_sum_system,monomial_measures,legendre_measures,Gramian, HkinnerLegendre,random_full_system
 from helpers import fermi_pasta_ulam
-from als import ALSSystem,ALS
+from als_l1_test import ALSSystem
 from bstt import Block, BlockSparseTT
 block = __block()
 
@@ -19,7 +19,7 @@ order = 8
 degree = 3
 maxGroupSize = 2
 interaction = [3]+ [4] + [5]*(order-4) + [4] + [3]
-trainSampleSize = 750
+trainSampleSize = 2000
 maxSweeps=20
 eq = 3
 
@@ -87,7 +87,7 @@ localL2Gramians = [np.eye(degree+1) for i in range(order)]
 localL2Gramians.append(np.ones([degree+1,degree+1]))
 
    
-solver = ALSSystem(bstt, augmented_train_measures,  train_values,_localL2Gramians=localL2Gramians,_localH1Gramians=localH1Gramians,_verbosity=1)
+solver = ALSSystem(bstt, augmented_train_measures,  train_values,_localL2Gramians=localL2Gramians,_localH1Gramians=localH1Gramians,_verbosity=2)
 solver.maxSweeps = maxSweeps
 solver.targetResidual = 1e-6
 #solver.increaseRanks=increaseRanks

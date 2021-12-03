@@ -264,8 +264,8 @@ def monomial_measures(_points, _degree):
 
 def legendre_measures(_points, _degree,_a=-1,_b=1):
     assert _a < _b
-    N,M = _points.shape
-    factors = np.sqrt(2/(_b-_a))*np.sqrt(2*np.arange(_degree+1)+1)
+    N,M = _points.shape # sample x order
+    factors = np.sqrt(2*np.arange(_degree+1)+1)
     ret =  legval(2/(_b-_a)*(_points-_a)-1, np.diag(factors)).T
     assert ret.shape == (M, N, _degree+1)
     return ret
@@ -273,7 +273,7 @@ def legendre_measures(_points, _degree,_a=-1,_b=1):
 def legendre_measures_grad(_points, _degree,_a=-1,_b=1):
     assert _a < _b
     N,M = _points.shape
-    factors = np.sqrt(2/(_b-_a))*np.sqrt(2*np.arange(_degree+1)+1)
+    factors = np.sqrt(2*np.arange(_degree+1)+1)
     ret = legval(2/(_b-_a)*(_points-_a)-1, np.diag(factors)).T
     assert ret.shape == (M, N, _degree+1)
     ret_der = legval(2/(_b-_a)*(_points-_a)-1, 2/(_b-_a)*legder(np.diag(factors))).T
@@ -399,7 +399,7 @@ def HkinnerLegendre(k):
 
 def Gramian(d, inner,_a=-1,_b=1):
     matrix = np.empty((d,d))
-    e = lambda k: np.eye(1,d,k)[0]
+    e = lambda k: np.sqrt(2*k+1)*np.eye(1,d,k)[0]
     for i in range(d):
         ei = e(i)
         for j in range(i+1):
