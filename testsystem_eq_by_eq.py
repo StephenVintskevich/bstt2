@@ -17,10 +17,10 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
-order = 20
+order = 10
 degree = 3
 maxGroupSize = 2
-trainSampleSize = 350
+trainSampleSize = 1000
 maxSweeps=20
 
 

@@ -290,6 +290,7 @@ class ALSSystem(object):
         self.bstt.assume_corePosition(self.bstt.order-1)
         while self.bstt.corePosition > 0:
             self.move_core('left')
+        self.bstt.components[self.bstt.corePosition]/=np.linalg.norm(self.bstt.components[self.bstt.corePosition])
 
 
     def move_core(self, _direction):
@@ -394,9 +395,7 @@ class ALSSystem(object):
         
        
 
-        Op_blocks = []
-        Weights = []
-        Tr_blocks = []
+        Op_blocks = []      
         for block in coreBlocks:
             op = np.einsum('nld,ne,sd,nrd -> ndlesr', L[:, block[0],:], E[:, block[1]], S[block[2],:], R[:, block[3],:])
             Op_blocks.append(op)      
@@ -407,24 +406,47 @@ class ALSSystem(object):
         reducedBlocks = [Block((b[0],b[1],b[3])) for b in coreBlocks]
         for k in range(self.bstt.interaction[self.bstt.corePosition]):
             Op_blocks_eq = []
+            Weights = []
+            Tr_blocks = []
             eqs = [True if S[k,l] == 1 else False for l in range(self.bstt.numberOfEquations)]
-            print(eqs)
             for o in Op_blocks:
                 Op_blocks_eq.append(o[:,eqs,:,:,k,:].reshape(self.numberOfSamples*np.sum(eqs),-1))
             
-            Op = np.concatenate(Op_blocks_eq, axis=1)
-            rhs = self.values[:,eqs].reshape(-1)
-               
-            reg = Ridge( fit_intercept=False,alpha=self.alpha).fit(Op, rhs)
-            Res = reg.coef_
-            tmp = BlockSparseTensor.fromarray( self.bstt.components[self.bstt.corePosition][:,:,k,:],reducedBlocks)
-            print(Op.shape,tmp.shape)
-            print(rhs,Op@tmp)
+            for block in coreBlocks:
+                Le,LP = np.linalg.eigh(np.einsum('ijk,k->ij',LGH1[block[0],block[0],eqs],np.ones(np.sum(eqs))))
+                Ee,EP = np.linalg.eigh(EGH1[block[1],block[1]])
+                Re,RP = np.linalg.eigh(np.einsum('ijk,k->ij',RGH1[block[3],block[3],eqs],np.ones(np.sum(eqs))))
+                LPL2 = LP.T@np.einsum('ijk,k->ij',LGL2[block[0],block[0],eqs],np.ones(np.sum(eqs)))@LP
+                Le = Le/np.diag(LPL2)
+                
+                RPL2 = RP.T@np.einsum('ijk,k->ij',RGL2[block[3],block[3],eqs],np.ones(np.sum(eqs)))@RP
+                Re = Re/np.diag(RPL2)
+                
+                tr = np.einsum('il,jm,kn->ijklmn',LP,EP,RP)
+                tr_shape = tr.shape[0]*tr.shape[1]*tr.shape[2]
+                Tr_blocks.append(tr.reshape(tr_shape,tr_shape))
             
-            print(Res,tmp.data )
+                Weights.extend( np.einsum('i,j,k->ijk',Le,Ee,Re).reshape(-1))
+            
+            Op = np.concatenate(Op_blocks_eq, axis=1)
+            Transform  = block_diag(*Tr_blocks)        
+            assert np.allclose(Transform@Transform.T, np.eye(Transform.shape[0]), rtol=1e-14, atol=1e-14)
+            #inverseWeightMatrix = np.diag([ np.sqrt(1/w) if np.abs(w) > 1e-12 else 0 for w in Weights])
+            
+            #OpTr = Op@Transform@inverseWeightMatrix
+            
+            rhs = self.values[:,eqs].reshape(-1,order='F')
+               
+            #reg = LassoCV(cv=10,eps=1e-8, fit_intercept=False).fit(Op, rhs)
+            #reg = Ridge(fit_intercept=False,alpha=self.alpha,tol=1e-8).fit(Op, rhs)
+            #Res = reg.coef_
+
+            #Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
+
+            Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
+            #core[:,:,k,:] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, reducedBlocks, shape).toarray()
             core[:,:,k,:] = BlockSparseTensor(Res, reducedBlocks, shape).toarray()
-            if self.bstt.corePosition == 0:
-                exit()
+
             
         self.bstt.components[self.bstt.corePosition] = core
         if self.verbosity >= 2:
@@ -437,7 +459,8 @@ class ALSSystem(object):
         increaseRanks = False #prepare initial sweeps before rank increase
         if self.increaseRanks: increaseRanks = True; self.increaseRanks = False
         for sweep in range(self.maxSweeps):
-            self.alpha = 0.001 * prev_residual
+            self.alpha = 1e-15
+            print(np.linalg.norm(self.bstt.components[self.bstt.corePosition]))
             if sweep >= self.initialSweeps and increaseRanks == True:
                 self.increaseRanks = True
             while self.bstt.corePosition < self.bstt.order-1:

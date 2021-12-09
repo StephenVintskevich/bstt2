@@ -12,16 +12,17 @@ from als_l1_test import ALSSystem
 from bstt import Block, BlockSparseTT
 block = __block()
 
-#import warnings
-#warnings.filterwarnings("ignore")
+import warnings
+warnings.filterwarnings("ignore")
 
-order = 8
+order = 10
 degree = 3
 maxGroupSize = 2
 interaction = [3]+ [4] + [5]*(order-4) + [4] + [3]
-trainSampleSize = 2000
+interaction2 = [3]+  [4]*(order-2)  + [3]
+trainSampleSize = 1500
 maxSweeps=20
-eq = 3
+ranks = [4]*(order-1)
 
 def selectionMatrix(k,_numberOfEquations):
     assert k >= 0 and k < _numberOfEquations+1
@@ -66,6 +67,49 @@ def selectionMatrix(k,_numberOfEquations):
             Smat[0,i] = 1
     return Smat
 
+def selectionMatrix2(k,_numberOfEquations):
+    assert k >= 0 and k < _numberOfEquations+1
+    if k == 0:
+        Smat = np.zeros([3,_numberOfEquations])
+        Smat[2,0] = 1
+        Smat[1,1] = 1
+        for i in range(2,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == 1:
+        Smat = np.zeros([4,_numberOfEquations])
+        Smat[3,0] = 1
+        Smat[2,1] = 1
+        Smat[1,2] = 1
+        for i in range(3,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == _numberOfEquations - 2:
+        Smat = np.zeros([4,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[3,i] = 1
+        Smat[2,k-1] = 1
+        Smat[1,k] = 1
+        Smat[0,k+1] = 1
+    elif k == _numberOfEquations - 1:
+        Smat = np.zeros([3,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[2,i] = 1
+        Smat[1,k-1] = 1
+        Smat[0,k] = 1
+    elif k == _numberOfEquations:
+         Smat = np.zeros([1,_numberOfEquations])
+         for i in range(0,_numberOfEquations):
+             Smat[0,i] = 1
+    else:        
+        Smat = np.zeros([4,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[0,i] = 1
+        Smat[3,k-1] = 1
+        Smat[2,k] = 1
+        Smat[1,k+1] = 1
+        for i in range(k+2,_numberOfEquations):
+            Smat[0,i] = 1
+    return Smat
+
 
 train_points,train_values = fermi_pasta_ulam(order,trainSampleSize)
 train_points = train_points.T
@@ -77,7 +121,7 @@ print(train_measures.shape)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
 
 bstt = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix)
-
+#bstt = random_full_system([degree]*order, interaction2, ranks,selectionMatrix2)
 print(f"DOFS: {bstt.dofs()}")
 print(f"Ranks: {bstt.ranks}")
 print(f"Interaction: {bstt.interaction}")
@@ -87,7 +131,8 @@ localL2Gramians = [np.eye(degree+1) for i in range(order)]
 localL2Gramians.append(np.ones([degree+1,degree+1]))
 
    
-solver = ALSSystem(bstt, augmented_train_measures,  train_values,_localL2Gramians=localL2Gramians,_localH1Gramians=localH1Gramians,_verbosity=2)
+#solver = ALSSystem(bstt, train_measures,  train_values,_verbosity=1)
+solver = ALSSystem(bstt, augmented_train_measures,  train_values,_localL2Gramians=localL2Gramians,_localH1Gramians=localH1Gramians,_verbosity=1)
 solver.maxSweeps = maxSweeps
 solver.targetResidual = 1e-6
 #solver.increaseRanks=increaseRanks

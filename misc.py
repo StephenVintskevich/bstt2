@@ -331,7 +331,7 @@ def random_full(_univariateDegrees, _ranks):
     return BlockSparseTT.random(dimensions, ranks[1:-1], blocks)
 
 
-def random_full_system(_univariateDegrees, _interactionranges, _ranks):
+def random_full_system(_univariateDegrees, _interactionranges, _ranks, _selectionMatrix):
     """
     Create a randomly initialized TT with the given rank.
 
@@ -342,7 +342,7 @@ def random_full_system(_univariateDegrees, _interactionranges, _ranks):
     maxTheoreticalRanks = np.minimum(np.cumprod(dimensions[:-1]), np.cumprod(dimensions[1:][::-1])[::-1])
     ranks = [1] + np.minimum(maxTheoreticalRanks, _ranks).tolist() + [1]
     blocks = [[block[0:ranks[m],0:dimensions[m],0:_interactionranges[m],0:ranks[m+1]]] for m in range(order)]
-    return BlockSparseTTSystem.random(dimensions, ranks[1:-1],_interactionranges, blocks,order)
+    return BlockSparseTTSystem.random(dimensions, ranks[1:-1],_interactionranges, blocks,order,_selectionMatrix)
 
 
 
@@ -382,17 +382,17 @@ def recover_ml(_measures, _values, _degrees, _maxGroupSize, _maxIter=10, _maxSwe
     return bstts
 
 
-def L2innerLegendre(c1, c2):
-    i = legint(legmul(c1, c2))
+def L2innerLegendre(c1, c2,_a=-1,_b=1):
+    i = 0.5*legint(legmul(c1, c2))
     return (legval(1, i) - legval(-1, i))
 
 def HkinnerLegendre(k):
     assert isinstance(k, int) and k >= 0
     def inner(c1, c2,_a,_b):
         ret = L2innerLegendre(c1, c2)
-        for j in range(k):
-            c1 = 2/(_b-_a)*legder(c1)
-            c2 = 2/(_b-_a)*legder(c2)
+        for j in range(1,k+1):
+            c1 = 2/(_b-_a)**j*legder(c1)
+            c2 = 2/(_b-_a)**j*legder(c2)
             ret += L2innerLegendre(c1, c2)
         return ret
     return inner
