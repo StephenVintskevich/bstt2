@@ -22,7 +22,8 @@ load_me = np.load('data.npy')
 t_vec = np.load('t_vec_p.npy')
 tau_value = t_vec[1]-t_vec[0]
 lambd = load_me[0]
-interval_half = load_me[2]
+a = -load_me[2]
+b = -a
 tau = load_me[3]
 R_inv =np.load('R_inv.npy')
 Q = Q_discr/tau
@@ -131,7 +132,7 @@ def t_to_ind( t):
 def V(x,v):
     order,samples = x.shape
     deg = v.dimensions[0]-1
-    measure = legendre_measures(x.T,deg)
+    measure = legendre_measures(x.T,deg,a,b)
     measure =  np.concatenate([measure, np.ones((1,samples,deg+1))], axis=0)
     res = v.evaluate(measure)
     assert res.shape ==  (samples,)
@@ -140,7 +141,7 @@ def V(x,v):
 def gradV(x,v):
     order,samples = x.shape
     deg = v.dimensions[0]-1
-    measure_grad = legendre_measures_grad(x.T,deg)
+    measure_grad = legendre_measures_grad(x.T,deg,a,b)
     measure_grad = [np.concatenate([measure_grad[k], np.ones((1,samples,deg+1))], axis=0) for k in range(order)] 
     res = np.array([v.evaluate(m) for m in measure_grad])
     assert res.shape ==  (order,samples) 

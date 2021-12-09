@@ -26,7 +26,7 @@ tau = 1e-3 # time step size
 nu = 1 # diffusion constant
 lambd = 0.1 # cost parameter
 gamma = 0 # discount factor, 0 for no discount
-interval_half = 1 # integration area of HJB equation is [-interval_half, interval_half]**n
+interval_half = 2 # integration area of HJB equation is [-interval_half, interval_half]**n
 boundary = 'Neumann' # use 'Neumann' or "Dirichlet
 use_full_model = True # if False, model is reduced to r Dimensions
 r = n # Model is reduced to r dimensions, only if use_full_model == False

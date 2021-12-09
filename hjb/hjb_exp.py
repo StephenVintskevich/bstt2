@@ -18,7 +18,7 @@ from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, 
 import ode
 import copy
 import numpy as np
-from als import ALS
+from als_old import ALS
 import optimize
 from tilde_r import calc_tilde_r, calc_total_reward
 import set_dynamics
@@ -33,19 +33,20 @@ load_me = np.load('data.npy')
 tau = load_me[3]#t_vec[1]-t_vec[0]
 print(tau)
 order = int(data[4])
-degree = 8
-maxGroupSize = 5
+degree = 6
+maxGroupSize = 3
 maxSweeps = 20
 tol = 1e-4
 maxPolIt = 10
 Schloegel_ode = ode.Ode()
 print(f"Order {order}")
 print(f"degree {degree}")
-a=-2
-b=2
+
+a= -load_me[2]
+b= -a
 
 #generate sample data
-N = 4000
+N = 2000
 trainSampleSize = int(N)
 print(f"Sample Size {trainSampleSize}")
 train_points = (b-a)*np.random.rand(trainSampleSize, order)+a
@@ -90,8 +91,10 @@ for t in np.flipud(t_vec):
             vend.move_core('left')
         vend.components[0] = np.zeros(vend.components[0].shape)
         print(f"DOFS {vend.dofs()}")
+        #solver = ALS(vend, augmented_train_measures,  end_values,
+        #             _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
         solver = ALS(vend, augmented_train_measures,  end_values,
-                     _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
+                      _verbosity=1)
         solver.maxSweeps = 10
         solver.targetResidual = 1e-8
         solver.run()
@@ -102,6 +105,7 @@ for t in np.flipud(t_vec):
 
         count = 0
         while count < maxPolIt:
+            print(f"Norm: {np.linalg.norm(vlist[-1].components[vlist[-1].corePosition])}")
             # calculate rhs
             print(f"Start Calculating RHS")
             rhs = calc_tilde_r(t, train_points.T, vlist)
@@ -114,8 +118,10 @@ for t in np.flipud(t_vec):
             if err < tol:
                 break
             # update v  alue function
+            #solver = ALS(vlist[-1], augmented_train_measures,  rhs,
+            #             _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
             solver = ALS(vlist[-1], augmented_train_measures,  rhs,
-                         _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
+                         _verbosity=1)
             solver.maxSweeps = maxSweeps
             solver.targetResidual = 1e-5
             solver.run()

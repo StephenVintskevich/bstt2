@@ -15,11 +15,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 order = 8
-degree = 6
-maxGroupSize = 2
+degree = 8
+maxGroupSize = 3
 #interaction = [4]+ [5] + [6]+[7]*(order-6) +[6]+[5] + [4]
 interaction = [3]+ [4] + [5]*(order-4) +[4] + [3]
-trainSampleSize = 5000
+trainSampleSize = 10000
 maxSweeps=10
 ranks = [4]*(order-1)
 c = 1.5

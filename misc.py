@@ -382,7 +382,7 @@ def recover_ml(_measures, _values, _degrees, _maxGroupSize, _maxIter=10, _maxSwe
     return bstts
 
 
-def L2innerLegendre(c1, c2,_a=-1,_b=1):
+def L2innerLegendre(c1, c2):
     i = 0.5*legint(legmul(c1, c2))
     return (legval(1, i) - legval(-1, i))
 
