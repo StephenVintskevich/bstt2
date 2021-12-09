@@ -112,7 +112,7 @@ for t in np.flipud(t_vec):
             print(f"Error {err}")
             if err < tol:
                 break
-            # update value function
+            # update v  alue function
             solver = ALS(vlist[-1], augmented_train_measures,  rhs,
                          _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
             solver.maxSweeps = maxSweeps
@@ -166,10 +166,10 @@ def calc_opt(x0, u0, calc_cost, x_opt):
     cost2 -= add_cost2/2
     cost2 += Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
     return x_vec.T, u_vec.T, cost, cost1, cost2, Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
-x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward,x_hjb)
+x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb+0.0001*np.random.rand(u_hjb.shape[0],u_hjb.shape[1]), Schloegel_ode.calc_reward,x_hjb)
 print("cost hjb", rew_hjb, 'cost opt', cost_opt, 'cost1',cost1, 'cost2', cost2,'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))#,'last_rew 1 2', last_rew,last_rew_2, 'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))
       
-
+#+0.01*np.random.rand(u_hjb.shape[0],u_hjb.shape[1])
    
 
 
