@@ -25,7 +25,7 @@ Variables:
 """
 
 #import xerus as xe
-#import numpy as np
+import numpy as np
 from scipy import linalg as la
 import scipy
 import time
@@ -85,3 +85,4 @@ class Open_loop_solver:
     def initialize_new(self, calc_final, t_steps):
         self.calc_final = calc_final
         self.t_steps = t_steps
+

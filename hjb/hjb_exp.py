@@ -33,22 +33,23 @@ load_me = np.load('data.npy')
 tau = load_me[3]#t_vec[1]-t_vec[0]
 print(tau)
 order = int(data[4])
-degree = 7
-maxGroupSize = 4
+degree = 8
+maxGroupSize = 5
 maxSweeps = 20
 tol = 1e-4
 maxPolIt = 10
 Schloegel_ode = ode.Ode()
 print(f"Order {order}")
 print(f"degree {degree}")
-
+a=-2
+b=2
 
 #generate sample data
-N = 1000
+N = 4000
 trainSampleSize = int(N)
 print(f"Sample Size {trainSampleSize}")
-train_points = 2*np.random.rand(trainSampleSize, order)-1
-train_measures = legendre_measures(train_points, degree)
+train_points = (b-a)*np.random.rand(trainSampleSize, order)+a
+train_measures = legendre_measures(train_points, degree, _a=a,_b=b)
 augmented_train_measures = np.concatenate(
     [train_measures, np.ones((1, trainSampleSize, degree+1))], axis=0)
 
@@ -61,7 +62,7 @@ def f(xs): return Schloegel_ode.calc_end_reward(0, xs.T)#np.linalg.norm(xs, axis
 
 testSampleSize = int(100)
 test_points = 2*np.random.rand(testSampleSize,order)-1
-test_measures = legendre_measures(test_points, degree)
+test_measures = legendre_measures(test_points, degree,_a=a,_b=b)
 augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)
 
 
@@ -70,7 +71,7 @@ end_values = f(train_points)
 
 
 # calculate local gramians
-localH1Gramians = [Gramian(degree+1, HkinnerLegendre(1)) for i in range(order)]
+localH1Gramians = [Gramian(degree+1, HkinnerLegendre(1),_a=a,_b=b) for i in range(order)]
 localH1Gramians.append(np.ones([degree+1, degree+1]))
 localL2Gramians = [np.eye(degree+1) for i in range(order)]
 localL2Gramians.append(np.ones([degree+1, degree+1]))
@@ -112,7 +113,7 @@ for t in np.flipud(t_vec):
             print(f"Error {err}")
             if err < tol:
                 break
-            # update value function
+            # update v  alue function
             solver = ALS(vlist[-1], augmented_train_measures,  rhs,
                          _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
             solver.maxSweeps = maxSweeps
@@ -166,10 +167,10 @@ def calc_opt(x0, u0, calc_cost, x_opt):
     cost2 -= add_cost2/2
     cost2 += Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
     return x_vec.T, u_vec.T, cost, cost1, cost2, Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
-x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward,x_hjb)
+x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb+0.0001*np.random.rand(u_hjb.shape[0],u_hjb.shape[1]), Schloegel_ode.calc_reward,x_hjb)
 print("cost hjb", rew_hjb, 'cost opt', cost_opt, 'cost1',cost1, 'cost2', cost2,'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))#,'last_rew 1 2', last_rew,last_rew_2, 'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))
       
-
+#+0.01*np.random.rand(u_hjb.shape[0],u_hjb.shape[1])
    
 
 
