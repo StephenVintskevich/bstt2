@@ -243,6 +243,41 @@ def zeros_homogenous_polynomial_sum_system(_univariateDegrees, _interactionrange
     blocks.append([block[d,_totalDegree-d,0,0] for d in range(_totalDegree+1)])
     return BlockSparseTTSystem.zeros(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
 
+def random_fixed_variable_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    assert len(_univariateDegrees) == len(_interactionranges)
+    assert isinstance(_interactionranges,list)
+    order = len(_univariateDegrees)
+    
+    
+    
+    dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+    
+    blocks = [[block[0,0,0:_interactionranges[0],0],block[0,1:3,0:_interactionranges[0],1:3] ]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = [3]
+    mblocks = [block[0,0,0:_interactionranges[1],0],block[1:3,0,0:_interactionranges[1],1:(2+_maxGroupSize)],
+               block[0,1:3,0:_interactionranges[1],1:(2+_maxGroupSize)],block[1:3,1:3,0:_interactionranges[1],(2+_maxGroupSize)] ]
+    blocks.append(mblocks)
+    ranks.append(3+_maxGroupSize)
+
+    for k in range(2, order-1):
+        mblocks = [block[0,0,0:_interactionranges[k],0],block[1:(2+_maxGroupSize),0,0:_interactionranges[k],1:(2+_maxGroupSize)],
+                   block[2+_maxGroupSize,0,0:_interactionranges[k],2+_maxGroupSize],
+                   block[0,1:3,0:_interactionranges[k],1:(2+_maxGroupSize)],block[1:(2+_maxGroupSize),1:3,0:_interactionranges[k],(2+_maxGroupSize)] ]
+        ranks.append(3+_maxGroupSize)
+        blocks.append(mblocks)
+    mblocks = [block[0,0,0:_interactionranges[order-1],0],block[1:(2+_maxGroupSize),0,0:_interactionranges[order-1],1],
+               block[2+_maxGroupSize,0,0:_interactionranges[order-1],2],
+               block[0,1:3,0:_interactionranges[order-1],1],block[1:(2+_maxGroupSize),1:3,0:_interactionranges[order-1],2] ]
+    blocks.append(mblocks)
+    ranks.append(3)    
+    mblocks = [block[2,0,0,0],block[1,1,0,0],block[0,2,0,0]]
+    blocks.append(mblocks)
+    
+    return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
 
 
 
@@ -261,6 +296,14 @@ def monomial_measures(_points, _degree):
     assert ret.shape == (M, N, _degree+1)
     return ret
 
+def sinecosine_measures(_points):
+    N,M = _points.shape # sample x order
+    ret = np.zeros([M,N,3])
+    ret[:,:,0] = np.ones([M,N]) 
+    ret[:,:,1] = np.sin(_points.T) 
+    ret[:,:,2] =  np.cos(_points.T) 
+    assert ret.shape == (M, N, 3)
+    return ret
 
 def legendre_measures(_points, _degree,_a=-1,_b=1):
     assert _a < _b

@@ -220,6 +220,12 @@ comps.append(c)
 blocks.append(b)
 print(blocks)
 bstt_ex = BlockSparseTTSystem(comps,blocks,selectionMatrix,_numberOfEquations=order)
+
+bstt_ex.assume_corePosition(bstt_ex.order-1)
+while bstt_ex.corePosition > 0:
+     bstt_ex.move_core('left')
+
+print(f"Norm: {np.linalg.norm(bstt_ex.components[0])}")
 print(bstt_ex.ranks)
 print(bstt_ex.interaction)
 print(augmented_train_measures.shape)

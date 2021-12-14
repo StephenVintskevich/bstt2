@@ -18,7 +18,7 @@ from misc import random_homogenous_polynomial_sum,  legendre_measures, Gramian, 
 import ode
 import copy
 import numpy as np
-from als_old import ALS
+from als import ALS
 import optimize
 from tilde_r import calc_tilde_r, calc_total_reward
 import set_dynamics
@@ -33,8 +33,8 @@ load_me = np.load('data.npy')
 tau = load_me[3]#t_vec[1]-t_vec[0]
 print(tau)
 order = int(data[4])
-degree = 6
-maxGroupSize = 3
+degree = 5
+maxGroupSize = 4
 maxSweeps = 20
 tol = 1e-4
 maxPolIt = 10
@@ -61,7 +61,7 @@ def f(xs): return Schloegel_ode.calc_end_reward(0, xs.T)#np.linalg.norm(xs, axis
 
 
 
-testSampleSize = int(100)
+testSampleSize = int(500)
 test_points = 2*np.random.rand(testSampleSize,order)-1
 test_measures = legendre_measures(test_points, degree,_a=a,_b=b)
 augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)
@@ -91,10 +91,10 @@ for t in np.flipud(t_vec):
             vend.move_core('left')
         vend.components[0] = np.zeros(vend.components[0].shape)
         print(f"DOFS {vend.dofs()}")
-        #solver = ALS(vend, augmented_train_measures,  end_values,
-        #             _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
         solver = ALS(vend, augmented_train_measures,  end_values,
-                      _verbosity=1)
+                     _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
+        #solver = ALS(vend, augmented_train_measures,  end_values,
+        #              _verbosity=1)
         solver.maxSweeps = 10
         solver.targetResidual = 1e-8
         solver.run()
@@ -109,19 +109,20 @@ for t in np.flipud(t_vec):
             # calculate rhs
             print(f"Start Calculating RHS")
             rhs = calc_tilde_r(t, train_points.T, vlist)
+            rhs_test = calc_tilde_r(t, test_points.T, vlist)
             print(f"Finished Calculating RHS")
-            values = vlist[-1].evaluate(augmented_train_measures)
+            values = vlist[-1].evaluate(augmented_test_measures)
             print(f"DOFS { vlist[-1].dofs()}")
 
-            err = np.linalg.norm(values - rhs)/float(trainSampleSize)
+            err = np.linalg.norm(values - rhs_test)/float(testSampleSize)
             print(f"Error {err}")
             if err < tol:
                 break
             # update v  alue function
-            #solver = ALS(vlist[-1], augmented_train_measures,  rhs,
-            #             _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
             solver = ALS(vlist[-1], augmented_train_measures,  rhs,
-                         _verbosity=1)
+                         _localL2Gramians=localL2Gramians, _localH1Gramians=localH1Gramians, _verbosity=1)
+            #solver = ALS(vlist[-1], augmented_train_measures,  rhs,
+            #             _verbosity=1)
             solver.maxSweeps = maxSweeps
             solver.targetResidual = 1e-5
             solver.run()
@@ -130,13 +131,13 @@ for t in np.flipud(t_vec):
 print("vlist", len(vlist))
 # evaluating the result of policy iteration
 # evaluating the result of policy iteration
-x = 2*np.random.rand(1,order)-1
+x =np.ones([1,order])# 2*np.random.rand(1,order)-1
 
 
 #open loop solver from Leon
-step_size = .5
-step_size_before = 0.02
-max_iter = 1e5
+step_size = .05
+step_size_before = 0.002
+max_iter = 10000
 grad_tol = 1e-15
 steps = np.linspace(0, T, int(T/tau)+1)
 print('steps',len(steps),'tau',tau)
@@ -173,7 +174,7 @@ def calc_opt(x0, u0, calc_cost, x_opt):
     cost2 -= add_cost2/2
     cost2 += Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
     return x_vec.T, u_vec.T, cost, cost1, cost2, Schloegel_ode.calc_end_reward(0, x_opt[:,-1])
-x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb+0.0001*np.random.rand(u_hjb.shape[0],u_hjb.shape[1]), Schloegel_ode.calc_reward,x_hjb)
+x_opt, u_opt, cost_opt,cost1 ,cost2, last_rew_2= calc_opt(x.T, u_hjb, Schloegel_ode.calc_reward,x_hjb)
 print("cost hjb", rew_hjb, 'cost opt', cost_opt, 'cost1',cost1, 'cost2', cost2,'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))#,'last_rew 1 2', last_rew,last_rew_2, 'norm(x_opt-x_hjb)', np.linalg.norm(x_opt.T-x_hjb)/np.linalg.norm(x_opt))
       
 #+0.01*np.random.rand(u_hjb.shape[0],u_hjb.shape[1])

@@ -5,110 +5,63 @@ Created on Wed Nov 17 10:25:27 2021
 
 @author: goette
 """
+from math import comb
 import numpy as np 
-from misc import  __block, random_homogenous_polynomial_sum_system,random_homogenous_polynomial_sum,zeros_homogenous_polynomial_sum_system,monomial_measures,legendre_measures,Gramian, HkinnerLegendre,random_full_system
-from helpers import fermi_pasta_ulam
+from misc import  __block,legendre_measures,Gramian, HkinnerLegendre
+from helpers import fermi_pasta_ulam,selectionMatrix3
 from als_l1_test import ALSSystem
-from bstt import Block, BlockSparseTT
+from bstt import BlockSparseTTSystem
 block = __block()
 
 import warnings
 warnings.filterwarnings("ignore")
 
-order = 10
+order = 20
 degree = 3
 maxGroupSize = 2
 interaction = [3]+ [4] + [5]*(order-4) + [4] + [3]
 interaction2 = [3]+  [4]*(order-2)  + [3]
-trainSampleSize = 1500
+trainSampleSize = 5000
 maxSweeps=20
 ranks = [4]*(order-1)
 
-def selectionMatrix(k,_numberOfEquations):
-    assert k >= 0 and k < _numberOfEquations+1
-    if k == 0:
-        Smat = np.zeros([3,_numberOfEquations])
-        Smat[2,0] = 1
-        Smat[1,1] = 1
-        for i in range(2,_numberOfEquations):
-            Smat[0,i] = 1
-    elif k == 1:
-        Smat = np.zeros([4,_numberOfEquations])
-        Smat[3,0] = 1
-        Smat[2,1] = 1
-        Smat[1,2] = 1
-        for i in range(3,_numberOfEquations):
-            Smat[0,i] = 1
-    elif k == _numberOfEquations - 2:
-        Smat = np.zeros([4,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[3,i] = 1
-        Smat[2,k-1] = 1
-        Smat[1,k] = 1
-        Smat[0,k+1] = 1
-    elif k == _numberOfEquations - 1:
-        Smat = np.zeros([3,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[2,i] = 1
-        Smat[1,k-1] = 1
-        Smat[0,k] = 1
-    elif k == _numberOfEquations:
-         Smat = np.zeros([1,_numberOfEquations])
-         for i in range(0,_numberOfEquations):
-             Smat[0,i] = 1
-    else:        
-        Smat = np.zeros([5,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[4,i] = 1
-        Smat[3,k-1] = 1
-        Smat[2,k] = 1
-        Smat[1,k+1] = 1
-        for i in range(k+2,_numberOfEquations):
-            Smat[0,i] = 1
-    return Smat
+def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    assert len(_univariateDegrees) == len(_interactionranges)
+    assert isinstance(_interactionranges,list)
+    order = len(_univariateDegrees)
+    
+    
+    
 
-def selectionMatrix2(k,_numberOfEquations):
-    assert k >= 0 and k < _numberOfEquations+1
-    if k == 0:
-        Smat = np.zeros([3,_numberOfEquations])
-        Smat[2,0] = 1
-        Smat[1,1] = 1
-        for i in range(2,_numberOfEquations):
-            Smat[0,i] = 1
-    elif k == 1:
-        Smat = np.zeros([4,_numberOfEquations])
-        Smat[3,0] = 1
-        Smat[2,1] = 1
-        Smat[1,2] = 1
-        for i in range(3,_numberOfEquations):
-            Smat[0,i] = 1
-    elif k == _numberOfEquations - 2:
-        Smat = np.zeros([4,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[3,i] = 1
-        Smat[2,k-1] = 1
-        Smat[1,k] = 1
-        Smat[0,k+1] = 1
-    elif k == _numberOfEquations - 1:
-        Smat = np.zeros([3,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[2,i] = 1
-        Smat[1,k-1] = 1
-        Smat[0,k] = 1
-    elif k == _numberOfEquations:
-         Smat = np.zeros([1,_numberOfEquations])
-         for i in range(0,_numberOfEquations):
-             Smat[0,i] = 1
-    else:        
-        Smat = np.zeros([4,_numberOfEquations])
-        for i in range(0,k-1):
-            Smat[0,i] = 1
-        Smat[3,k-1] = 1
-        Smat[2,k] = 1
-        Smat[1,k+1] = 1
-        for i in range(k+2,_numberOfEquations):
-            Smat[0,i] = 1
-    return Smat
+    def MaxSize(r,k):
+        mr, mk = _totalDegree-r, order-k-1
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize if r == 1 else 1)
+
+    dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+
+    blocks = [[block[0,l,0:_interactionranges[0],l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = []
+    for k in range(1, order):
+        mblocks = []
+        leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
+        leftSlices = np.cumsum([0] + leftSizes).tolist()
+        rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
+        rightSlices = np.cumsum([0] + rightSizes).tolist()
+        for l in range(_totalDegree+1):
+            for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+                m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+                mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, 0:_interactionranges[k], rightSlices[r]:rightSlices[r+1]])
+        ranks.append(leftSlices[-1])
+        blocks.append(mblocks)
+    #ranks.append(_totalDegree+1)
+    #blocks.append([block[l,d-l,0:_interactionranges[-1],d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    ranks.append(_totalDegree+1)
+    blocks.append([block[d,_totalDegree-d,0,0] for d in range(_totalDegree+1)])
+    return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
 
 
 train_points,train_values = fermi_pasta_ulam(order,trainSampleSize)
@@ -120,7 +73,7 @@ train_measures = legendre_measures(train_points, degree)
 print(train_measures.shape)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
 
-bstt = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix)
+bstt = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix3)
 #bstt = random_full_system([degree]*order, interaction2, ranks,selectionMatrix2)
 print(f"DOFS: {bstt.dofs()}")
 print(f"Ranks: {bstt.ranks}")

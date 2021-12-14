@@ -21,7 +21,7 @@ print(t_vec_p)
 b = 1 # left end of Domain
 horizon = 1
 a = -1 # right end of Domain
-n = 6 # spacial discretization points that are considered
+n = 8 # spacial discretization points that are considered
 tau = 1e-3 # time step size
 nu = 1 # diffusion constant
 lambd = 0.1 # cost parameter

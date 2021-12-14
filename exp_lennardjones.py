@@ -15,18 +15,21 @@ import warnings
 warnings.filterwarnings("ignore")
 
 order = 8
-degree = 8
-maxGroupSize = 3
-#interaction = [4]+ [5] + [6]+[7]*(order-6) +[6]+[5] + [4]
-interaction = [3]+ [4] + [5]*(order-4) +[4] + [3]
-trainSampleSize = 10000
-maxSweeps=10
+degree = 14
+maxGroupSize = 2
+interaction = [4]+ [5] + [6]+[7]*(order-6) +[6]+[5] + [4]
+#interaction = [3]+ [4] + [5]*(order-4) +[4] + [3]
+trainSampleSize = 20000
+maxSweeps=5
 ranks = [4]*(order-1)
-c = 1.5
+c = 1
 sigma = np.ones([order,order])
 
 
-
+bstt = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix4)
+print(f"DOFS: {bstt.dofs()}")
+print(f"Ranks: {bstt.ranks}")
+print(f"Interaction: {bstt.interaction}")
 
 
 train_points,train_values = lennardJonesSamples(order,trainSampleSize,c,sigma)
@@ -34,14 +37,10 @@ train_points = train_points.T
 train_values = train_values.T
 print(train_points.shape)
 print(train_values.shape)
-train_measures = legendre_measures(train_points, degree,-np.pi,np.pi)
+train_measures = legendre_measures(train_points, degree,-c*order,c*order)
 print(train_measures.shape)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
 
-bstt = random_homogenous_polynomial_sum_system([degree]*order,interaction,degree,maxGroupSize,selectionMatrix3)
-print(f"DOFS: {bstt.dofs()}")
-print(f"Ranks: {bstt.ranks}")
-print(f"Interaction: {bstt.interaction}")
 localH1Gramians = [Gramian(degree+1,HkinnerLegendre(1)) for i in range(order)]
 localH1Gramians.append(np.ones([degree+1,degree+1]))
 localL2Gramians = [np.eye(degree+1) for i in range(order)]
@@ -58,7 +57,7 @@ testSampleSize = int(2e4)
 test_points,test_values = lennardJonesSamples(order,testSampleSize,c,sigma)
 test_points = test_points.T
 test_values = test_values.T
-test_measures = legendre_measures(test_points, degree,-np.pi,np.pi)
+test_measures =  legendre_measures(test_points, degree,-c*order,c*order)
 augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)  # measures.shape == (order,N,degree+1)
 
 

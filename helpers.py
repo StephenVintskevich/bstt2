@@ -95,13 +95,14 @@ def lennardJonesParam2(x,sigma):
 def randNum(a,b):
     return (b-a)*np.random.rand()+a
 
+
+
 def lennardJonesSamples(order,number_of_samples,c,sigma):
     samples = []
     count = 0
-    while(count < number_of_samples):
-        
+    while(count < number_of_samples):        
         sample = np.sort(c*order*(2 * np.random.rand(order) - 1))
-        if np.all(np.diff(sample)>=1.05):
+        if np.all(np.diff(sample)>=1.1) and np.all(np.diff(sample)<=1.9):
             samples.append(sample)
             count+=1
     samples = np.column_stack(samples)
@@ -194,6 +195,31 @@ def selectionMatrix3(k,_numberOfEquations):
         Smat = np.zeros([5,_numberOfEquations])
         for i in range(0,k-1):
             Smat[4,i] = 1
+        Smat[3,k-1] = 1
+        Smat[2,k] = 1
+        Smat[1,k+1] = 1
+        for i in range(k+2,_numberOfEquations):
+            Smat[0,i] = 1
+    return Smat
+
+def selectionMatrix3dense(k,_numberOfEquations):
+    assert k >= 0 and k < _numberOfEquations+1
+    if k == 0:
+        Smat = np.zeros([3,_numberOfEquations])
+        Smat[2,0] = 1
+        Smat[1,1] = 1
+        for i in range(2,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == _numberOfEquations - 1:
+        Smat = np.zeros([3,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[2,i] = 1
+        Smat[1,k-1] = 1
+        Smat[0,k] = 1
+    else:        
+        Smat = np.zeros([4,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[0,i] = 1
         Smat[3,k-1] = 1
         Smat[2,k] = 1
         Smat[1,k+1] = 1
