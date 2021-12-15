@@ -2,7 +2,7 @@
 import numpy as np
 from sklearn.linear_model import LassoCV, RidgeCV, Ridge, Lasso
 from scipy.linalg import block_diag,null_space,eigh
-from bstt import Block, BlockSparseTensor, BlockSparseTT, BlockSparseTTSystem
+from bstt import Block, BlockSparseTensor, BlockSparseTT, BlockSparseTTSystem,BlockSparseTTSystem2
 import sys
 from matplotlib import pyplot as plt
 import time
@@ -58,6 +58,7 @@ class ALS(object):
         self.bstt.assume_corePosition(self.bstt.order-1)
         while self.bstt.corePosition > 0:
             self.move_core('left')
+        
 
 
     def move_core(self, _direction):
@@ -291,7 +292,7 @@ class ALSSystem(object):
         while self.bstt.corePosition > 0:
             self.move_core('left')
         self.bstt.components[self.bstt.corePosition]/=np.linalg.norm(self.bstt.components[self.bstt.corePosition])
-
+        self.prev_residual = self.residual()
 
     def move_core(self, _direction):
         assert len(self.leftStack) + len(self.rightStack) == self.bstt.order+1
@@ -326,7 +327,7 @@ class ALSSystem(object):
             #self.leftL2GramianStack.append(np.einsum('ijsk, lmtn, jm,ild,sd,td -> knd', comp,  comp, self.localL2Gramians[self.bstt.corePosition-1], self.leftL2GramianStack[-1],Smat,Smat))
             if self.verbosity >= 2:
                 if valid_stacks:
-                    print(f"move_core {self.bstt.corePosition-1} --> {self.bstt.corePosition}.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
+                    print(f"move_core {self.bstt.corePosition-1} --> {self.bstt.corePosition}.")# (residual: {pre_res:.2e} --> {self.residual():.2e})")
                 else:
                     print(f"move_core {self.bstt.corePosition-1} --> {self.bstt.corePosition}.")
         else:
@@ -372,7 +373,7 @@ class ALSSystem(object):
         S = self.bstt.selectionMatrix(self.bstt.corePosition,self.bstt.numberOfEquations)
         R = self.rightStack[-1]
         coreBlocks = self.bstt.blocks[self.bstt.corePosition]
-        
+        #print(S)
     
        
        
@@ -393,21 +394,22 @@ class ALSSystem(object):
                 Op_blocks_eq.append(o[:,eqs,:,:,k,:].reshape(self.numberOfSamples*np.sum(eqs),-1))  
             
             Op = np.concatenate(Op_blocks_eq, axis=1)
+            #print(f"Cond {k}: {np.linalg.cond(Op)}")
             U,s,VT = np.linalg.svd(Op,full_matrices=False)
-            s = s[s>1e-16]
-            Op = U[:,:len(s)]@np.diag(s)@VT[:len(s),:]
+            #s = s[s>(s[0]*1e-16)]
+            #Op = U[:,:len(s)]@np.diag(s)@VT[:len(s),:]
             rhs = self.values[:,eqs].reshape(-1,order='F')
                
-            Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
-
-            #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
+            #Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
+            self.alpha = s[0]*1e-12*self.prev_residual
+            Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
             #core[:,:,k,:] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, reducedBlocks, shape).toarray()
             core[:,:,k,:] = BlockSparseTensor(Res, reducedBlocks, shape).toarray()
             #print(Op.shape,np.linalg.matrix_rank(Op,tol=1e-16),s[-1])
-            
+        
         self.bstt.components[self.bstt.corePosition] = core
         if self.verbosity >= 2:
-            print(f"microstep.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
+            print(f"microstep.  (residual: {pre_res:.2e} --> {self.residual():.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])})")
 
     def run(self):
         prev_residual = self.residual()
@@ -416,7 +418,7 @@ class ALSSystem(object):
         increaseRanks = False #prepare initial sweeps before rank increase
         if self.increaseRanks: increaseRanks = True; self.increaseRanks = False
         for sweep in range(self.maxSweeps):
-            self.alpha =1e-15
+            #self.alpha =1e-15
             if sweep >= self.initialSweeps and increaseRanks == True:
                 self.increaseRanks = True
             while self.bstt.corePosition < self.bstt.order-1:
@@ -425,9 +427,8 @@ class ALSSystem(object):
             while self.bstt.corePosition > 0:
                 self.microstep()
                 self.move_core('left')
-      
             residual = self.residual()
-            if self.verbosity >= 1: print(f"[{sweep}] Residuum: {residual:.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])}")
+            if self.verbosity >= 1: print(f"[{sweep}] Residuum: {residual:.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])}, alpha = {self.alpha}")
 
             if residual < self.targetResidual:
                 if self.verbosity >= 1:
@@ -435,20 +436,163 @@ class ALSSystem(object):
                     print(f"Final residuum: {self.residual():.2e}")
                 return
 
-            if residual > prev_residual:
+            # if residual > prev_residual:
+            #     if self.verbosity >= 1:
+            #         print(f"Terminating (residual increases)")
+            #         print(f"Final residuum: {self.residual():.2e}")
+            #     return
+
+            # if (prev_residual - residual) < self.minDecrease*residual:
+            #     if self.verbosity >= 1:
+            #         print(f"Terminating (minDecrease reached)")
+            #         print(f"Final residuum: {self.residual():.2e}")
+            #     return
+
+            prev_residual = residual
+            self.smin = prev_residual*self.sminFactor
+
+        if self.verbosity >= 1: print(f"Terminating (maxSweeps reached)")
+        if self.verbosity >= 1: print(f"Final residuum: {self.residual():.2e}")
+
+
+class ALSSystem2(object):
+    def __init__(self, _coeffs, _measurements, _values, _verbosity=0):
+        self.coeffs = _coeffs
+        assert isinstance(_coeffs, BlockSparseTTSystem2)
+        assert isinstance(_measurements, np.ndarray) and isinstance(_values, np.ndarray)
+        assert len(_measurements) == self.coeffs.order
+        assert all(compMeas.shape == (len(_values), dim) for compMeas, dim in zip(_measurements, self.coeffs.dimensions))
+        assert (_values.shape == (_measurements.shape[1],self.coeffs.numberOfEquations)) 
+        self.measurements = _measurements
+        self.numberOfSamples = _measurements.shape[1]
+        self.values = _values
+        self.verbosity = _verbosity
+        self.maxSweeps = 100
+        self.targetResidual = 1e-8
+        self.minDecrease = 1e-3
+        self.alpha = 0.1
+        
+    
+        self.leftStack = [[np.ones((self.numberOfSamples,1))]*self.coeffs.numberOfEquations] + [None]*(self.coeffs.order-1)
+        self.rightStack = [[np.ones((self.numberOfSamples,1))]*self.coeffs.numberOfEquations]
+
+        self.coeffs.assume_corePosition(self.coeffs.order-1)
+        while self.coeffs.corePosition > 0:
+            self.move_core('left')
+            
+        self.prev_residual = 1.0
+        
+
+    def move_core(self, _direction):
+        assert len(self.leftStack) + len(self.rightStack) == self.coeffs.order+1
+        valid_stacks = all(entry is not None for entry in self.leftStack + self.rightStack)
+        if self.verbosity >= 2 and valid_stacks:
+            pre_res = self.residual()
+        self.bstt.move_core(_direction)
+        if _direction == 'left':
+            self.leftStack.pop()
+            newStack = []
+            for eq in range(self.coeffs.numberOfEquations):
+                comp =  self.coeffs.bstts[self.coeffs.selectionMatrix[eq,self.coeffs.corePosition+1]].components[self.coeffs.corePosition+1]         
+                newStack.append(np.einsum('ler, me, mr -> ml', comp, self.measurements[self.coeffs.corePosition+1], self.rightStack[-1][eq]))
+            self.rightStack.append(newStack)
+            if self.verbosity >= 2:
+                print(f"move_core {self.coeffs.corePosition+1} --> {self.coeffs.corePosition}. ")# (residual: {pre_res:.2e} --> {self.residual():.2e})")
+        elif _direction == 'right':
+            self.rightStack.pop()
+            newStack = []
+            for eq in range(self.coeffs.numberOfEquations):
+                comp =  self.coeffs.bstts[self.coeffs.selectionMatrix[eq,self.coeffs.corePosition-1]].components[self.coeffs.corePosition-1]         
+                newStack.append(np.einsum('ml, me, ler -> mr', self.leftStack[-1], self.measurements[self.bstt.corePosition-1],comp))
+            self.leftStack.append(newStack)
+            if self.verbosity >= 2:
+                print(f"move_core {self.coeffs.corePosition-1} --> {self.coeffs.corePosition}.")# (residual: {pre_res:.2e} --> {self.residual():.2e})")
+        else:
+            raise ValueError(f"Unknown _direction. Expected 'left' or 'right' but got '{_direction}'")
+
+
+    def residual(self):
+        pred = []
+        for eq in range(self.coeffs.numberOfEquations):
+            core = self.coeffs.bstts[self.coeffs.selectionMatrix[eq,self.coeffs.corePosition]].components[self.coeffs.corePosition]
+            L = self.leftStack[-1][eq]
+            E = self.measurements[self.bstt.corePosition]
+            R = self.rightStack[-1][eq]
+            pred.append(np.einsum('ler,ml,me,mr -> m', core, L, E, R))
+        return np.linalg.norm(pred.reshape(-1) -  self.values.reshape(-1)) / np.linalg.norm(self.values.reshape(-1))
+
+
+   
+    def microstep(self):
+        L = self.leftStack[-1]
+        E = self.measurements[self.coeffs.corePosition]
+        R = self.rightStack[-1]
+        coreBlocks = self.coeffs.blocks[self.coeffs.corePosition]
+
+        Op_eq = []    
+        for eq in self.coeffs.numberOfEquations:
+            Op_blocks_eq = []      
+            for block in coreBlocks:        
+                op = np.einsum('ml,me,mr -> mler', L[eq][:, block[0]], E[:, block[1]], R[eq][:, block[2]])
+                Op_blocks_eq.append(op.reshape(self.numberOfSamples,-1))                
+            Op_eq.append(np.concatenate(Op_blocks_eq, axis=1))
+            
+
+        for k in range(self.coeffs.interactions):
+            core = self.coeffs.bstts[k].components[self.coeffs.corePosition]
+            Op_blocks_eq = []
+            eqs = [True if self.coeffs.selectionMatrix[eq,self.coeffs.corePosition] == k else False for eq in range(self.coeffs.numberOfEquations)]
+            
+            Op = np.concatenate(Op_eq[eqs], axis=1)
+
+            rhs = self.values[:,eqs].reshape(-1,order='F')
+               
+            Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
+            #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
+            #core[:,:,k,:] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, reducedBlocks, shape).toarray()
+            core[:,:,:] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
+            #print(Op.shape,np.linalg.matrix_rank(Op,tol=1e-16),s[-1])
+        
+        if self.verbosity >= 2:
+            print(f"microstep.  (residual: {self.prev_residual:.2e} --> {self.residual():.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])})")
+
+    def run(self):
+        self.prev_residual = self.residual()
+        if self.verbosity >= 1: print(f"Initial residuum: {self.prev_residual:.2e}")
+        increaseRanks = False #prepare initial sweeps before rank increase
+        if self.increaseRanks: increaseRanks = True; self.increaseRanks = False
+        for sweep in range(self.maxSweeps):
+            if sweep >= self.initialSweeps and increaseRanks == True:
+                self.increaseRanks = True
+            while self.bstt.corePosition < self.bstt.order-1:
+                self.microstep()
+                self.move_core('right')
+            while self.bstt.corePosition > 0:
+                self.microstep()
+                self.move_core('left')
+            self.microstep()
+            residual = self.residual()
+            if self.verbosity >= 1: print(f"[{sweep}] Residuum: {residual:.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])}, alpha = {self.alpha}")
+
+            if residual < self.targetResidual:
+                if self.verbosity >= 1:
+                    print(f"Terminating (targetResidual reached)")
+                    print(f"Final residuum: {self.residual():.2e}")
+                return
+
+            if residual > self.prev_residual and sweep > 0 :
                 if self.verbosity >= 1:
                     print(f"Terminating (residual increases)")
                     print(f"Final residuum: {self.residual():.2e}")
                 return
 
-            if (prev_residual - residual) < self.minDecrease*residual:
+            if (self.prev_residual - residual) < self.minDecrease*residual and sweep > 0 :
                 if self.verbosity >= 1:
                     print(f"Terminating (minDecrease reached)")
                     print(f"Final residuum: {self.residual():.2e}")
                 return
 
-            prev_residual = residual
-            self.smin = prev_residual*self.sminFactor
+            self.prev_residual = residual
 
         if self.verbosity >= 1: print(f"Terminating (maxSweeps reached)")
         if self.verbosity >= 1: print(f"Final residuum: {self.residual():.2e}")

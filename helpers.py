@@ -159,6 +159,88 @@ def magneticDipolesSamples(order,number_of_samples,M,x,I):
     assert samples.shape == derivatives.shape
     return samples,derivatives
 
+def selectionMatrix0(k,_numberOfEquations):
+    assert k >= 0 and k < _numberOfEquations+1
+    if k == _numberOfEquations:
+         Smat = np.zeros([1,_numberOfEquations])
+         for i in range(0,_numberOfEquations):
+             Smat[0,i] = 1
+    else:        
+        Smat = np.zeros([2,_numberOfEquations])
+        for i in range(0,k):
+            Smat[0,i] = 1
+        Smat[1,k] = 1
+        for i in range(k+1,_numberOfEquations):
+            Smat[0,i] = 1
+    return Smat
+
+def selectionMatrix1(k,_numberOfEquations):
+    assert k >= 0 and k < _numberOfEquations+1
+    if k == 0:
+        Smat = np.zeros([2,_numberOfEquations])
+        Smat[1,0] = 1
+        for i in range(1,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == _numberOfEquations - 1:
+        Smat = np.zeros([2,_numberOfEquations])
+        for i in range(0,k):
+            Smat[1,i] = 1
+        Smat[0,k] = 1
+    elif k == _numberOfEquations:
+         Smat = np.zeros([1,_numberOfEquations])
+         for i in range(0,_numberOfEquations):
+             Smat[0,i] = 1
+    else:        
+        Smat = np.zeros([3,_numberOfEquations])
+        for i in range(0,k):
+            Smat[2,i] = 1
+        Smat[1,k] = 1
+        for i in range(k+1,_numberOfEquations):
+            Smat[0,i] = 1
+    return Smat
+
+def selectionMatrix2(k,_numberOfEquations):
+    assert k >= 0 and k < _numberOfEquations+1
+    if k == 0:
+        Smat = np.zeros([3,_numberOfEquations])
+        Smat[2,0] = 1
+        Smat[1,1] = 1
+        for i in range(2,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == 1:
+        Smat = np.zeros([3,_numberOfEquations])
+        Smat[1,0] = 1
+        Smat[2,1] = 1
+        Smat[1,2] = 1
+        for i in range(3,_numberOfEquations):
+            Smat[0,i] = 1
+    elif k == _numberOfEquations - 2:
+        Smat = np.zeros([3,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[2,i] = 1
+        Smat[0,k-1] = 1
+        Smat[1,k] = 1
+        Smat[0,k+1] = 1
+    elif k == _numberOfEquations - 1:
+        Smat = np.zeros([3,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[2,i] = 1
+        Smat[1,k-1] = 1
+        Smat[0,k] = 1
+    elif k == _numberOfEquations:
+         Smat = np.zeros([1,_numberOfEquations])
+         for i in range(0,_numberOfEquations):
+             Smat[0,i] = 1
+    else:        
+        Smat = np.zeros([4,_numberOfEquations])
+        for i in range(0,k-1):
+            Smat[3,i] = 1
+        Smat[1,k-1] = 1
+        Smat[2,k] = 1
+        Smat[1,k+1] = 1
+        for i in range(k+2,_numberOfEquations):
+            Smat[0,i] = 1
+    return Smat
 def selectionMatrix3(k,_numberOfEquations):
     assert k >= 0 and k < _numberOfEquations+1
     if k == 0:
