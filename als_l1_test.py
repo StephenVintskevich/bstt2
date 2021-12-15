@@ -549,9 +549,7 @@ class ALSSystem2(object):
                
             Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
             #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
-            #core[:,:,k,:] = BlockSparseTensor(Transform@inverseWeightMatrix@Res, reducedBlocks, shape).toarray()
             core[:,:,:] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
-            #print(Op.shape,np.linalg.matrix_rank(Op,tol=1e-16),s[-1])
         
         if self.verbosity >= 2:
             print(f"microstep.  (residual: {self.prev_residual:.2e} --> {self.residual():.2e}, Norm: {np.linalg.norm(self.bstt.components[self.bstt.corePosition])})")
