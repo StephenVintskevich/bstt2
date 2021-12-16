@@ -221,6 +221,13 @@ blocks.append(b)
 print(blocks)
 bstt_ex = BlockSparseTTSystem(comps,blocks,selectionMatrix,_numberOfEquations=order)
 
+core = comps[3]
+sh = core.shape
+ctmp = np.einsum('ijkl->ijlk',core).reshape(sh[0]*sh[1]*sh[3],sh[2])
+U,s,VT = np.linalg.svd(ctmp)
+print("sing val: ", s)
+
+
 bstt_ex.assume_corePosition(bstt_ex.order-1)
 while bstt_ex.corePosition > 0:
      bstt_ex.move_core('left')

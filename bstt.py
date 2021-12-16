@@ -543,15 +543,15 @@ class BlockSparseTTSystem(object):
         assert isinstance(self.corePosition, int)
         assert _direction in ['left', 'right']
         S = None
+        scale = 1
         if _direction == 'left':
             assert 0 < self.corePosition
-
             CORE = BlockSparseTensor.fromarray(self.components[self.corePosition], self.blocks[self.corePosition])
             U, S, Vt = CORE.svd(0)
 
             nextCore = self.components[self.corePosition-1]
-            self.components[self.corePosition-1] = (nextCore.reshape(-1, nextCore.shape[3]) @ U @ S).reshape(nextCore.shape)
-            self.components[self.corePosition] = Vt
+            self.components[self.corePosition-1] = 1/scale*(nextCore.reshape(-1, nextCore.shape[3]) @ U @ S).reshape(nextCore.shape)
+            self.components[self.corePosition] = scale*Vt
 
             self.__corePosition -= 1
         else:
@@ -561,8 +561,8 @@ class BlockSparseTTSystem(object):
             U, S, Vt = CORE.svd(3)
 
             nextCore = self.components[self.corePosition+1]
-            self.components[self.corePosition] = Vt
-            self.components[self.corePosition+1] = (S @ U.T @ nextCore.reshape(nextCore.shape[0], -1)).reshape(nextCore.shape)
+            self.components[self.corePosition] = scale*Vt
+            self.components[self.corePosition+1] = 1/scale*(S @ U.T @ nextCore.reshape(nextCore.shape[0], -1)).reshape(nextCore.shape)
 
             self.__corePosition += 1
         self.verify()
@@ -587,3 +587,111 @@ class BlockSparseTTSystem(object):
         ranks = [1] + _ranks + [1]
         components = [np.zeros((leftRank, dimension, intrange, rightRank)) for leftRank, dimension,intrange, rightRank in zip(ranks[:-1], _dimensions,_interactionranges, ranks[1:])]
         return cls(components, _blocks,_selectionMatrix,_numberOfEquations)
+
+class BlockSparseTTSystem2(object):
+    def __init__(self, _bstts,_selectionMatrix,_numberOfEquations=None):
+        """
+        """
+        for bstt in _bstts:
+            assert isinstance(bstt, BlockSparseTT) 
+            assert bstt.order == _bstts[0].order 
+            assert bstt.dimensions == _bstts[0].order 
+            assert bstt.ranks == _bstts[0].ranks 
+            assert bstt.corePosition == _bstts[0].corePosition 
+        if not _numberOfEquations:
+            _numberOfEquations = len(_bstts[0]._components)
+        assert isinstance(_selectionMatrix, np.ndarray) 
+        assert _selectionMatrix.shape == (_numberOfEquations,_bstts[0].order)
+        assert _numberOfEquations <= len(_bstts[0]._components)
+
+        self.numberOfInteractions = len(_bstts)
+        self.__corePosition = _bstts[0].corePosition 
+        self.bstts = _bstts
+        self.blocks = _bstts[0].blocks
+        self.numberOfEquations = _numberOfEquations
+        self.selectionMatrix = _selectionMatrix
+        self.verify()
+
+    def verify(self):
+        for bstt in self.bstts:
+            for e, (compBlocks, component) in enumerate(zip(bstt.blocks, bstt.components)):
+                assert np.all(np.isfinite(component))
+                cmp = np.array(component)
+                for block in compBlocks:
+                    cmp[block] = 0
+                assert np.allclose(cmp, 0), f"Component {e} does not satisfy the block structure. Error: {np.max(abs(cmp)):.2e}"
+
+    def evaluate(self, _measures):
+        assert self.order > 0 and len(_measures) == self.order
+        m = len(_measures[0])
+        ret = [np.ones([m,1])]*self.numberOfEquations
+        for eq in range(self.numberOfEquations):
+            for pos in range(self.order):
+                comp = self.bstts[self.selectionMatrix[eq,pos]].components[pos]
+                ret[eq] = np.einsum('ml,ler,me -> mr', ret[eq], comp, _measures[pos])
+        ret = np.concatenate(ret,axis=1)
+        assert ret.shape == (m,self.numberOfEquations)
+        return ret[:,:]
+
+
+    @property
+    def corePosition(self):
+        return self.__corePosition 
+
+    def assume_corePosition(self, _position):
+        assert 0 <= _position and _position < self.order
+        for bstt in self.bstts:
+            assert bstt.order == self.bstts[0].order 
+            assert bstt.dimensions == self.bstts[0].order 
+            assert bstt.ranks == self.bstts[0].ranks 
+            assert bstt.corePosition == self.bstts[0].corePosition
+            bstt.assume_corePosition(_position)
+        self.__corePosition = _position
+
+    @property
+    def ranks(self):
+        return [cmp.shape[2] for cmp in self.bstts[0].components[:-1]]
+
+    @property
+    def dimensions(self):
+        return [cmp.shape[1] for cmp in self.bstts[0].components]
+    
+    @property
+    def interactions(self):
+        return self.numberOfInteractions
+
+    @property
+    def order(self):
+        return len(self.components)
+    
+
+    def move_core(self, _direction):
+        assert isinstance(self.corePosition, int)
+        assert _direction in ['left', 'right']
+        if _direction == 'left':
+            assert 0 < self.corePosition
+            for bstt in self.bstts:
+                bstt.move_core('left')
+            self.__corePosition -= 1
+            
+        else:
+            assert self.corePosition < self.order-1
+
+            for bstt in self.bstts:
+                bstt.move_core('right')
+            self.__corePosition += 1
+            
+        self.verify()
+
+    def dofs(self):
+        return sum(BlockSparseTensor.fromarray(comp, blks).dofs() for comp, blks in zip(self.components, self.blocks))
+
+    @classmethod
+    def random(cls, _dimensions, _ranks, _blocks,_numberOfEquations,
+               _numberOfInteractions,_selectionMatrix):
+        assert len(_ranks)+1 == len(_dimensions)
+        bstts = []
+        for i in range(_numberOfInteractions):
+            bstts.append(BlockSparseTT.random(_dimensions, _ranks, _blocks))        
+        return cls(bstts,_selectionMatrix,_numberOfEquations)
+    
