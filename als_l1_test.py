@@ -393,9 +393,9 @@ class ALSSystem(object):
                 Op_blocks_eq.append(o[:,eqs,:,:,k,:].reshape(self.numberOfSamples*np.sum(eqs),-1))  
             
             Op = np.concatenate(Op_blocks_eq, axis=1)
-            U,s,VT = np.linalg.svd(Op,full_matrices=False)
-            s = s[s>1e-16]
-            Op = U[:,:len(s)]@np.diag(s)@VT[:len(s),:]
+            #U,s,VT = np.linalg.svd(Op,full_matrices=False)
+            #s = s[s>1e-16]
+            #Op = U[:,:len(s)]@np.diag(s)@VT[:len(s),:]
             rhs = self.values[:,eqs].reshape(-1,order='F')
                
             Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)

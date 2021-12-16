@@ -279,6 +279,39 @@ def random_fixed_variable_sum_system(_univariateDegrees, _interactionranges, _to
     
     return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
 
+def random_fixed_variable_sum(_univariateDegrees, _totalDegree, _maxGroupSize):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    order = len(_univariateDegrees)
+    
+    
+    
+    dimensions = _univariateDegrees+1
+    
+    blocks = [[block[0,0,0],block[0,1:3,1:3] ]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = [3]
+    mblocks = [block[0,0,0],block[1:3,0,1:(2+_maxGroupSize)],
+               block[0,1:3,1:(2+_maxGroupSize)],block[1:3,1:3,(2+_maxGroupSize)] ]
+    blocks.append(mblocks)
+    ranks.append(3+_maxGroupSize)
+
+    for k in range(2, order-1):
+        mblocks = [block[0,0,0],block[1:(2+_maxGroupSize),0,1:(2+_maxGroupSize)],
+                   block[2+_maxGroupSize,0,2+_maxGroupSize],
+                   block[0,1:3,1:(2+_maxGroupSize)],block[1:(2+_maxGroupSize),1:3,(2+_maxGroupSize)] ]
+        ranks.append(3+_maxGroupSize)
+        blocks.append(mblocks)
+    mblocks = [block[0,0,0],block[1:(2+_maxGroupSize),0,1],
+               block[2+_maxGroupSize,0,2],
+               block[0,1:3,1],block[1:(2+_maxGroupSize),1:3,2] ]
+    blocks.append(mblocks)
+    ranks.append(3)    
+    mblocks = [block[2,0,0],block[1,1,0],block[0,2,0]]
+    blocks.append(mblocks)
+    
+    return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks,  blocks)
+
 
 
 

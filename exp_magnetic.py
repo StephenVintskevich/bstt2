@@ -34,8 +34,8 @@ x = np.linspace(0,1*(order-1),order)
 train_points,train_values = magneticDipolesSamples(order,trainSampleSize,M,x,I)
 train_points = train_points.T
 train_values = train_values.T
-print(train_points.shape)
-print(train_values.shape)
+print(train_points.shape,np.linalg.norm(train_points))
+print(train_values.shape,np.linalg.norm(train_values))
 #train_measures = legendre_measures(train_points, degree,-np.pi,np.pi)
 train_measures = sinecosine_measures(train_points)
 print(train_measures.shape)
