@@ -16,7 +16,7 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
-order = 20  
+order = 6  
 degree = 3
 maxGroupSize = 2
 #interaction = [3]+ [4] + [5]*(order-4) + [4] + [3]

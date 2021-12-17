@@ -288,10 +288,6 @@ def random_fixed_variable_sum(_univariateDegrees, _totalDegree, _maxGroupSize):
     
     
     dimensions = _univariateDegrees+1
-<<<<<<< HEAD
-=======
-    numberOfEquations = len(dimensions)
->>>>>>> dcef0de03d440134294515d32a3bae03f9aeb53f
     
     blocks = [[block[0,0,0],block[0,1:3,1:3] ]]  # _totalDegree <= _univariateDegrees[0]
     ranks = [3]
