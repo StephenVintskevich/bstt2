@@ -615,6 +615,7 @@ class ALSSystem2(object):
         R = self.rightStack[-1]
         coreBlocks = self.coeffs.blocks[self.coeffs.corePosition]
 
+        # Build for each equation the corresponding local operator
         Op_eq = []
         for eq in range(self.coeffs.numberOfEquations):
             Op_blocks_eq = []
@@ -623,15 +624,14 @@ class ALSSystem2(object):
                     'ml,me,mr -> mler', L[eq][:, block[0]], E[:, block[1]], R[eq][:, block[2]])
                 Op_blocks_eq.append(op.reshape(self.numberOfSamples, -1))
             Op_eq.append(np.concatenate(Op_blocks_eq, axis=1))
-
+        
+        # Optimize interaction range many cores
         for k in range(self.coeffs.interactions):
             core = self.coeffs.bstts[k].components[self.coeffs.corePosition]
             eqs = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition]
                    == k else False for eq in range(self.coeffs.numberOfEquations)]
-            if sum(eqs) == 0:
-                continue
-            print(eqs)
-            if sum(eqs) == 1 or (self.direction == 'right' and k == self.interactions-1) or  (self.direction == 'left' and k == 0):
+            if sum(eqs) == 0: continue # skip if core is not used at the current position                
+            if sum(eqs) == 1 or (self.direction == 'right' and k == self.coeffs.interactions-1 and self.coeffs.corePosition > 0) or  (self.direction == 'left' and k == 0 and self.coeffs.corePosition < self.coeffs.order-1):
                 Op_eq_aux = []
                 for i in range(len(eqs)):
                     if eqs[i]:
@@ -644,9 +644,14 @@ class ALSSystem2(object):
                 #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
                 core[:, :, :] = BlockSparseTensor(
                     Res, coreBlocks, core.shape).toarray()
-            elif self.direction == 'right' and k == 0: 
-                eqs2 = [eqs[k] if not eqs[k+1] else False for k in  range(len(eqs)-1)]
-                eqs2.append(False)
+            elif (self.direction == 'right' and k == 0) or (self.direction == 'left' and k == 0 and self.coeffs.corePosition == self.coeffs.order-1): 
+                eqs2 = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition-1]
+                       == k else False for eq in range(self.coeffs.numberOfEquations)]
+                diff = np.array(eqs) == np.array(eqs2)
+                switched_eqs = np.where(diff == diff.min())[0]
+                blocks_switched_eq =  list(set([Block((b[0], b[0])) for b in coreBlocks]))
+
+                # solve for coefficents for multiple equations
                 Op_eq_aux = []
                 for i in range(len(eqs2)):
                     if eqs2[i]:
@@ -654,12 +659,78 @@ class ALSSystem2(object):
                 
                 Op = np.concatenate(Op_eq_aux, axis=0)
     
-                rhs = self.values[:, eqs].reshape(-1, order='F')
+                rhs = self.values[:, eqs2].reshape(-1, order='F')
                 Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
                 #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
                 core[:, :, :] = BlockSparseTensor(
                     Res, coreBlocks, core.shape).toarray()
-            
+                
+                # find basistransformation to reuse coefficents
+                for switched_eq in switched_eqs:
+                    R_new = np.einsum('ler, me, mr -> ml', core,
+                                    self.measurements[self.coeffs.corePosition], R[switched_eq])
+                    Op_blocks_switched_eq = []
+                    for block in blocks_switched_eq:
+                        op = np.einsum(
+                            'ml,mr -> mlr', L[switched_eq][:, block[0]], R_new[:, block[1]])
+                        Op_blocks_switched_eq.append(op.reshape(self.numberOfSamples, -1))
+                    Op_switched_eq = np.concatenate(Op_blocks_switched_eq, axis=1)
+                    rhs_switched_eq = self.values[:, switched_eq].reshape(-1, order='F')
+                    Res_switched_eq, *_ = np.linalg.lstsq(Op_switched_eq, rhs_switched_eq, rcond=None)
+                    core_switched_eq = BlockSparseTensor(
+                        Res_switched_eq,  blocks_switched_eq, (core.shape[0], core.shape[0])).toarray()
+                    self.leftStack[-1][switched_eq] = np.einsum(
+                       'ml, lr -> mr', self.leftStack[-1][switched_eq], core_switched_eq)
+                    comp =  self.coeffs.bstts[ self.coeffs.selectionMatrix[switched_eq, 
+                        self.coeffs.corePosition-1]].components[self.coeffs.corePosition-1]
+                    self.coeffs.bstts[ self.coeffs.selectionMatrix[switched_eq, 
+                        self.coeffs.corePosition-1]].components[self.coeffs.corePosition-1] = \
+                        np.einsum('ler,rs->les',comp,core_switched_eq)
+            elif self.direction == 'left' and k == self.coeffs.interactions-1 or (self.direction == 'right' and k ==  self.coeffs.interactions-1 and self.coeffs.corePosition ==0): 
+                eqs2 = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition+1]
+                       == k else False for eq in range(self.coeffs.numberOfEquations)]
+                diff = np.array(eqs) == np.array(eqs2)
+                switched_eqs = np.where(diff == diff.min())[0] 
+                blocks_switched_eq =  list(set([Block((b[2], b[2])) for b in coreBlocks]))
+                
+                # solve for coefficents for multiple equations
+                Op_eq_aux = []
+                for i in range(len(eqs2)):
+                    if eqs2[i]:
+                        Op_eq_aux.append(Op_eq[i])
+                
+                Op = np.concatenate(Op_eq_aux, axis=0)
+    
+                rhs = self.values[:, eqs2].reshape(-1, order='F')
+                Res, *_ = np.linalg.lstsq(Op, rhs, rcond=None)
+                #Res = np.linalg.solve(Op.T@Op+self.alpha*np.eye(Op.shape[1]), Op.T@rhs)
+                core[:, :, :] = BlockSparseTensor(
+                    Res, coreBlocks, core.shape).toarray()
+                
+                # find basistransformation to reuse coefficents
+                for switched_eq in switched_eqs:
+ 
+                    L_new = np.einsum( 'ml, me, ler -> mr', L[switched_eq], 
+                                      self.measurements[self.coeffs.corePosition], core)
+                    Op_blocks_switched_eq = []
+                    for block in blocks_switched_eq:
+                        op = np.einsum(
+                            'ml,mr -> mlr', L_new[:, block[0]], R[switched_eq][:, block[1]])
+                        Op_blocks_switched_eq.append(op.reshape(self.numberOfSamples, -1))
+                    Op_switched_eq = np.concatenate(Op_blocks_switched_eq, axis=1)
+                    rhs_switched_eq = self.values[:, switched_eq].reshape(-1, order='F')
+                    Res_switched_eq, *_ = np.linalg.lstsq(Op_switched_eq, rhs_switched_eq, rcond=None)
+                    core_switched_eq = BlockSparseTensor(
+                        Res_switched_eq,  blocks_switched_eq, (core.shape[2], core.shape[2])).toarray()
+                    self.rightStack[-1][switched_eq] = np.einsum(
+                       'lr, mr -> ml', core_switched_eq,self.rightStack[-1][switched_eq])
+                    comp =  self.coeffs.bstts[ self.coeffs.selectionMatrix[switched_eq, 
+                        self.coeffs.corePosition+1]].components[self.coeffs.corePosition+1]
+                    self.coeffs.bstts[ self.coeffs.selectionMatrix[switched_eq, 
+                        self.coeffs.corePosition+1]].components[self.coeffs.corePosition+1] = \
+                        np.einsum('kl,ler->ker',core_switched_eq,comp)
+                    
+        self.coeffs.verify()
         if self.verbosity >= 2:
             print(
                 f"microstep.  (residual: {self.prev_residual:.2e} --> {self.residual():.2e})")

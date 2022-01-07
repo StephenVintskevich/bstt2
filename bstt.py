@@ -603,7 +603,11 @@ class BlockSparseTTSystem2(object):
         assert isinstance(_selectionMatrix, np.ndarray) 
         assert _selectionMatrix.shape == (_numberOfEquations,_bstts[0].order)
         assert _numberOfEquations <= len(_bstts[0].components)
-
+        assert np.max(_selectionMatrix) == len(_bstts)-1
+        for k in range(_numberOfEquations):
+            assert np.min(np.diff(_selectionMatrix[k,:])) < 0 and np.max(np.diff(_selectionMatrix[k,:])) <= 0
+            for l in range(1,len(_bstts)-1):
+                assert sum(_selectionMatrix[k,:] == l) <= 1
         self.numberOfInteractions = len(_bstts)
         self.__corePosition = _bstts[0].corePosition 
         self.bstts = _bstts

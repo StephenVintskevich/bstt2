@@ -45,7 +45,7 @@ def fermi_pasta_ulam(number_of_oscillators, number_of_snapshots):
         derivatives[-1, j] = - 2 * snapshots[-1, j] + snapshots[-2, j] + 0.7 * (
                 -snapshots[-1, j] ** 3 - (snapshots[-1, j] - snapshots[-2, j]) ** 3)
 
-    return snapshots, derivatives
+    return snapshots.T, derivatives.T
 
 def massive_particles(number_of_equations, number_of_samples,G,m,r):
     # define random snapshot matrix
@@ -70,7 +70,7 @@ def testode(t,x):
     return np.concatenate([v,np.sin(y)])
 
 
-def lennardJonesParam(t,x,sigma):
+def lennardJonesParam(t,x,sigma,exp):
     n = len(x)// 2
     assert 2*n == len(x)
     y = x[:n]
@@ -79,17 +79,17 @@ def lennardJonesParam(t,x,sigma):
     for i in range(n):
         for j in range(n):
             if i != j:
-                res[i] += np.sign(y[i]-y[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(y[i]-y[j]))**13 -(sigma[i,j]/np.abs(y[i]-y[j]))**7  )
+                res[i] += np.sign(y[i]-y[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(y[i]-y[j]))**(2*exp+1) -(sigma[i,j]/np.abs(y[i]-y[j]))**(exp+1)  )
     v = v.reshape(-1)
     return np.concatenate([v,res])
 
-def lennardJonesParam2(x,sigma):
+def lennardJonesParam2(x,sigma,exp):
     n = len(x)
     res = np.zeros([n])
     for i in range(n):
         for j in range(n):
             if i != j:
-                res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**13 -(sigma[i,j]/np.abs(x[i]-x[j]))**7  )
+                res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
     return res
 
 def randNum(a,b):
@@ -97,25 +97,30 @@ def randNum(a,b):
 
 
 
-def lennardJonesSamples(order,number_of_samples,c,sigma):
+def lennardJonesSamples(order,number_of_samples,c,sigma,exp):
     samples = []
     count = 0
+    a=1.05
+    b=1.95
     while(count < number_of_samples):        
-        sample = np.sort(c*order*(2 * np.random.rand(order) - 1))
-        if np.all(np.diff(sample)>=1.1) and np.all(np.diff(sample)<=1.9):
-            samples.append(sample)
-            count+=1
+        sample = c*order*(2 * np.random.rand(1) - 1)
+        for i in range(0,order-1):
+            nextSample = sample[-1]+a+np.random.rand(1)*(b-a)
+            sample = np.append(sample,nextSample)
+        samples.append(sample)
+        count+=1
+
     samples = np.column_stack(samples)
     derivatives = []
     for k in range(number_of_samples):
-        derivatives.append(lennardJonesParam2(samples[:,k],sigma))
+        derivatives.append(lennardJonesParam2(samples[:,k],sigma,exp))
     derivatives = np.column_stack(derivatives)
     
     assert samples.shape == derivatives.shape
-    return samples,derivatives
+    return samples.T,derivatives.T
 
 
-def lennardjonesenergy(x,sigma):
+def lennardjonesenergy(x,sigma,exp):
     n = len(x)// 2
     assert 2*n == len(x)
     y = x[:n]
@@ -124,7 +129,7 @@ def lennardjonesenergy(x,sigma):
     for i in range(n):
         energy += 0.5 *v[i]**2
         for j in range(i):
-            energy+= (sigma[i,j]/(y[i]-y[j]))**12 - (sigma[i,j]/(y[i]-y[j]))**6
+            energy+= (sigma[i,j]/(y[i]-y[j]))**(2*exp) - (sigma[i,j]/(y[i]-y[j]))**exp
     return energy
 
 def magneticDipolesParam(t,y,M,x,I):
@@ -157,7 +162,7 @@ def magneticDipolesSamples(order,number_of_samples,M,x,I):
     derivatives = np.column_stack(derivatives)
     
     assert samples.shape == derivatives.shape
-    return samples,derivatives
+    return samples.T,derivatives.T
 
 def selectionMatrix0(k,_numberOfEquations):
     assert k >= 0 and k < _numberOfEquations+1
@@ -375,3 +380,20 @@ def selectionMatrix4(k,_numberOfEquations):
         for i in range(k+3,_numberOfEquations):
             Smat[0,i] = 1
     return Smat
+
+def SMat(interaction,order):
+    assert interaction >= 3
+    lower = (interaction - 2)//2
+    upper = (interaction - 3)//2
+    S = np.zeros([order,order+1])
+    decrease = np.linspace(interaction-2,1,interaction-2).astype(int)
+    for eq in range(order):
+        for pos in range(order+1):
+            if pos < eq-lower:
+                S[eq,pos] = interaction - 1 
+            elif pos > eq + upper:
+                S[eq,pos] = 0
+            else:
+                S[eq,pos] = decrease[pos-eq+lower]
+        S[eq,order] = 0
+    return S

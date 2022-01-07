@@ -16,13 +16,13 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
-order = 6 
+order = 50
 degree = 3
 maxGroupSize = 2
 interaction = 5
 
-trainSampleSize = 10000
-maxSweeps=20
+trainSampleSize = 3000
+maxSweeps=5
 ranks = [4]*(order-1)
 
 S = np.zeros([order,order+1])
@@ -50,7 +50,6 @@ for eq in range(order):
 #             S[eq,pos] = 0
 # =============================================================================
 print(S)
-
 def random_homogenous_polynomial_sum_system2(_univariateDegrees, _totalDegree, _maxGroupSize,_numberOfInteractions,_selectionMatrix):
     _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
     assert isinstance(_totalDegree, int) and _totalDegree >= 0
@@ -88,9 +87,9 @@ def random_homogenous_polynomial_sum_system2(_univariateDegrees, _totalDegree, _
     return BlockSparseTTSystem2.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks,numberOfEquations,_numberOfInteractions,_selectionMatrix)
 
 
+
+
 train_points,train_values = fermi_pasta_ulam(order,trainSampleSize)
-train_points = train_points.T
-train_values = train_values.T
 train_measures = legendre_measures(train_points, degree)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
 
@@ -103,7 +102,7 @@ print(f"Interaction: {coeffs.interactions}")
 
    
 #solver = ALSSystem(bstt, train_measures,  train_values,_verbosity=1)
-solver = ALSSystem2(coeffs, augmented_train_measures,  train_values,_verbosity=2)
+solver = ALSSystem2(coeffs, augmented_train_measures,  train_values,_verbosity=1)
 solver.maxSweeps = maxSweeps
 solver.targetResidual = 1e-4
 #solver.increaseRanks=increaseRanks
@@ -112,8 +111,6 @@ solver.run()
 
 testSampleSize = int(2e4)
 test_points,test_values =fermi_pasta_ulam(order,testSampleSize)
-test_points = test_points.T
-test_values = test_values.T
 test_measures = legendre_measures(test_points, degree)
 augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)  # measures.shape == (order,N,degree+1)
 

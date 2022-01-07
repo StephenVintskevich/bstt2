@@ -4,7 +4,7 @@ import numpy as np
 from numpy.polynomial.legendre import legval,legmul,legint,legder
 from numpy.polynomial.hermite_e import hermeval
 
-from bstt import Block, BlockSparseTT, BlockSparseTTSystem
+from bstt import Block, BlockSparseTT, BlockSparseTTSystem,BlockSparseTTSystem2
 from als import ALS
 
 
@@ -208,6 +208,44 @@ def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionrang
     blocks.append([block[d,_totalDegree-d,0,0] for d in range(_totalDegree+1)])
     return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
 
+def random_homogenous_polynomial_sum_system2(_univariateDegrees, _totalDegree, _maxGroupSize,_numberOfInteractions,_selectionMatrix):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    order = len(_univariateDegrees)
+
+
+    if isinstance(_maxGroupSize, int):
+        _maxGroupSize = [_maxGroupSize]*len(_univariateDegrees)   
+
+    def MaxSize(r,k):
+        mr, mk = _totalDegree-r, order-k-1
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize[k] )
+
+    dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+    blocks = [[block[0,l,l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = []
+    for k in range(1, order):
+        mblocks = []
+        leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
+        leftSlices = np.cumsum([0] + leftSizes).tolist()
+        rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
+        rightSlices = np.cumsum([0] + rightSizes).tolist()
+        for l in range(_totalDegree+1):
+            for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+                m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+                mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, rightSlices[r]:rightSlices[r+1]])
+        ranks.append(leftSlices[-1])
+        blocks.append(mblocks)
+    #ranks.append(_totalDegree+1)
+    #blocks.append([block[l,d-l,d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    ranks.append(_totalDegree+1)
+    blocks.append([block[d,_totalDegree-d,0] for d in range(_totalDegree+1)])
+    return BlockSparseTTSystem2.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks,numberOfEquations,_numberOfInteractions,_selectionMatrix)
+
+
+
 def zeros_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
     _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
     assert isinstance(_totalDegree, int) and _totalDegree >= 0
@@ -278,6 +316,44 @@ def random_fixed_variable_sum_system(_univariateDegrees, _interactionranges, _to
     blocks.append(mblocks)
     
     return BlockSparseTTSystem.random(dimensions.tolist()+[_totalDegree+1], ranks,_interactionranges +[1],  blocks, numberOfEquations,_selectionMatrix)
+
+def random_fixed_variable_sum_system2(_univariateDegrees, _totalDegree, _maxGroupSize,_numberOfInteractions,_selectionMatrix):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    order = len(_univariateDegrees)
+    
+    if isinstance(_maxGroupSize, int):
+        _maxGroupSize = [_maxGroupSize]*len(_univariateDegrees)   
+    
+    assert len(_maxGroupSize) == len(_univariateDegrees)  
+    
+    dimensions = _univariateDegrees+1
+    numberOfEquations = len(dimensions)
+    
+    blocks = [[block[0,0,0],block[0,1:3,1:3] ]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = [3]
+    mblocks = [block[0,0,0],block[1:3,0,1:(2+_maxGroupSize[1])],
+               block[0,1:3,1:(2+_maxGroupSize[1])],block[1:3,1:3,(2+_maxGroupSize[1])] ]
+    blocks.append(mblocks)
+    ranks.append(3+_maxGroupSize[1])
+
+    for k in range(2, order-1):
+        mblocks = [block[0,0,0],block[1:(2+_maxGroupSize[k-1]),0,1:(2+_maxGroupSize[k])],
+                   block[2+_maxGroupSize[k-1],0,2+_maxGroupSize[k]],
+                   block[0,1:3,1:(2+_maxGroupSize[k])],block[1:(2+_maxGroupSize[k-1]),1:3,(2+_maxGroupSize[k])] ]
+        ranks.append(3+_maxGroupSize[k])
+        blocks.append(mblocks)
+    mblocks = [block[0,0,0],block[1:(2+_maxGroupSize[order-2]),0,1],
+               block[2+_maxGroupSize[order-2],0,2],
+               block[0,1:3,1],block[1:(2+_maxGroupSize[order-2]),1:3,2] ]
+    blocks.append(mblocks)
+    ranks.append(3)    
+    mblocks = [block[2,0,0],block[1,1,0],block[0,2,0]]
+    blocks.append(mblocks)
+    
+    return BlockSparseTTSystem2.random(dimensions.tolist()+[_totalDegree+1], ranks,  blocks, numberOfEquations,_numberOfInteractions,_selectionMatrix)
+
 
 def random_fixed_variable_sum(_univariateDegrees, _totalDegree, _maxGroupSize):
     _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
