@@ -7,22 +7,22 @@ Created on Wed Nov 17 10:25:27 2021
 """
 import numpy as np 
 from misc import  __block, random_homogenous_polynomial_sum_system,random_homogenous_polynomial_sum_system2,zeros_homogenous_polynomial_sum_system,monomial_measures,legendre_measures,Gramian, HkinnerLegendre,random_full_system
-from helpers import lennardJonesSamples, SMat
-from als_l1_test import ALSSystem2
+from helpers import lennardJonesSamples,lennardJonesSamplesMod, SMat
+from als import ALSSystem2
 block = __block()
 
 import warnings
 warnings.filterwarnings("ignore")
 
 # Parameters
-order = 10
-degree = 6
+order = 12
+degree = 10
 #maxGroupSize = [1]+[2] +[3]*(order-4)+[2]+[1]
-maxGroupSize = 6
+maxGroupSize = 5
 interaction = 5
-trainSampleSize = 20000
-maxSweeps=10
-c = 1
+trainSampleSize = 15000
+maxSweeps=8
+c = 1.0
 
 #Model Parameters
 exp = 2
@@ -39,9 +39,11 @@ print(f"Ranks: {coeffs.ranks}")
 print(f"Interaction: {coeffs.interactions}")
 
 
-train_points,train_values = lennardJonesSamples(order,trainSampleSize,c,sigma,exp)
+#train_points,train_values = lennardJonesSamples(order,trainSampleSize,c,sigma,exp)
+train_points,train_values = lennardJonesSamplesMod(order,trainSampleSize,c,sigma,exp)
 print("Finished drawing samples")
-train_measures = legendre_measures(train_points, degree,-c*order,c*order)
+#train_measures = legendre_measures(train_points, degree,np.float(-c*order),np.float(c*order))
+train_measures = legendre_measures(train_points, degree)
 augmented_train_measures = np.concatenate([train_measures, np.ones((1,trainSampleSize,degree+1))], axis=0)
 
 
@@ -53,8 +55,9 @@ solver.maxGroupSize=maxGroupSize
 solver.run()
 
 testSampleSize = int(2e4)
-test_points,test_values = lennardJonesSamples(order,testSampleSize,c,sigma,exp)
-test_measures =  legendre_measures(test_points, degree,-c*order,c*order)
+test_points,test_values = lennardJonesSamplesMod(order,testSampleSize,c,sigma,exp)
+#test_measures =  legendre_measures(test_points, degree,np.float(-c*order),np.float(c*order))
+test_measures =  legendre_measures(test_points, degree)
 augmented_test_measures = np.concatenate([test_measures, np.ones((1,testSampleSize,degree+1))], axis=0)  # measures.shape == (order,N,degree+1)
 
 

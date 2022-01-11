@@ -9,14 +9,14 @@ from math import comb
 import numpy as np 
 from misc import  __block,legendre_measures,Gramian, HkinnerLegendre
 from helpers import fermi_pasta_ulam,selectionMatrix1 as SM
-from als_l1_test import ALSSystem2
+from als import ALSSystem2
 from bstt import BlockSparseTTSystem2,BlockSparseTT,BlockSparseTensor
 block = __block()
 
 import warnings
 warnings.filterwarnings("ignore")
 
-order = 50
+order = 20
 degree = 3
 maxGroupSize = 2
 interaction = 5

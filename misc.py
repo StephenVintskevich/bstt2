@@ -170,6 +170,55 @@ def random_homogenous_polynomial_sum(_univariateDegrees, _totalDegree, _maxGroup
     blocks.append([block[d,d,0] for d in range(_totalDegree+1)])
     return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks)
 
+def random_homogenous_polynomial_sum_grad(_univariateDegrees, _totalDegree, _maxGroupSize):
+    _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
+    assert isinstance(_totalDegree, int) and _totalDegree >= 0
+    assert _univariateDegrees.ndim == 1 and np.all(_univariateDegrees >= _totalDegree)
+    order = len(_univariateDegrees)
+
+
+    if isinstance(_maxGroupSize, int):
+        _maxGroupSize = [_maxGroupSize]*len(_univariateDegrees)   
+
+    def MaxSize(r,k):
+        mr, mk = _totalDegree-r, order-k-1
+        return min(comb(k+r,k), comb(mk+mr, mk), _maxGroupSize[k])
+
+    dimensions = _univariateDegrees+1
+    blocks = [[block[0,l,l] for l in range(_totalDegree+1)]]  # _totalDegree <= _univariateDegrees[0]
+    ranks = []
+    for k in range(1, order-1):
+        mblocks = []
+        leftSizes = [MaxSize(l,k-1) for l in range(_totalDegree+1)]
+        leftSlices = np.cumsum([0] + leftSizes).tolist()
+        rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
+        rightSlices = np.cumsum([0] + rightSizes).tolist()
+        for l in range(_totalDegree+1):
+            for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+                m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+                mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, rightSlices[r]:rightSlices[r+1]])
+        ranks.append(leftSlices[-1])
+        blocks.append(mblocks)
+    mblocks = []
+    leftSizes = [MaxSize(l,order-2) for l in range(_totalDegree+1)]
+    leftSlices = np.cumsum([0] + leftSizes).tolist()
+    rightSizes = [MaxSize(r,order-1) for r in range(_totalDegree+1)]
+    rightSlices = np.cumsum([0] + rightSizes).tolist()
+    for l in range(_totalDegree+1):
+        for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
+            if r == 0: continue    
+            m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
+            mblocks.append(block[leftSlices[l]:leftSlices[l+1], m, (rightSlices[r]-1):(rightSlices[r+1]-1)])
+    ranks.append(leftSlices[-1])
+    blocks.append(mblocks)
+    #ranks.append(_totalDegree+1)
+    #blocks.append([block[l,d-l,d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
+    ranks.append(_totalDegree)
+    blocks.append([block[d-1,_totalDegree-d,0] for d in range(1,_totalDegree+1)])
+    print(blocks[-2])
+    print(blocks[-1])
+    return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks)
+
 def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
     _univariateDegrees = np.asarray(_univariateDegrees, dtype=int)
     assert isinstance(_totalDegree, int) and _totalDegree >= 0
@@ -436,6 +485,14 @@ def legendre_measures_grad(_points, _degree,_a=-1,_b=1):
         grad.append(ret_tmp)
     return grad
 
+def legendre_measures_grad2(_points, _degree,_a=-1,_b=1):
+    assert _a < _b
+    N,M = _points.shape
+    factors = np.sqrt(2*np.arange(_degree+1)+1)
+    ret = legval(2/(_b-_a)*(_points-_a)-1, np.diag(factors)).T
+    assert ret.shape == (M, N, _degree+1)
+    ret_der = legval(2/(_b-_a)*(_points-_a)-1, 2/(_b-_a)*legder(np.diag(factors))).T
+    return ret,ret_der
 
 def hermite_measures(_points, _degree):
     N,M = _points.shape

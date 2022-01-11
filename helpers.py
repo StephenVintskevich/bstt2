@@ -92,10 +92,46 @@ def lennardJonesParam2(x,sigma,exp):
                 res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
     return res
 
+def lennardJonesParam2Mod(x,sigma,exp):
+    n = len(x)
+    res = np.zeros([n])
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                res[i] +=6/sigma[i,j]*((sigma[i,j]/(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/(x[i]-x[j]))**(exp+1)  )
+                #res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
+        if i > 0: 
+            res[i]*= (x[i]-x[i-1])**(2*exp+1)
+        if i < n-1:
+            res[i]*= (x[i]-x[i+1])**(2*exp+1)
+    return res
+
+
 def randNum(a,b):
     return (b-a)*np.random.rand()+a
 
 
+def lennardJonesSamplesMod(order,number_of_samples,c,sigma,exp):
+    samples = []
+    count = 0
+    a=1.0
+    b=2.0
+    while(count < number_of_samples):        
+        sample = c*order/2*np.random.rand(1) - c*order
+        for i in range(0,order-1):
+            nextSample = sample[-1]+a+np.random.rand(1)*(b-a)
+            sample = np.append(sample,nextSample)
+        samples.append(sample)
+        count+=1
+    samples = np.column_stack(samples)
+    #samples =  (2 * np.random.rand(order,number_of_samples) - 1)
+    derivatives = []
+    for k in range(number_of_samples):
+        derivatives.append(lennardJonesParam2Mod(samples[:,k],sigma,exp))
+    derivatives = np.column_stack(derivatives)
+    
+    assert samples.shape == derivatives.shape
+    return samples.T,derivatives.T
 
 def lennardJonesSamples(order,number_of_samples,c,sigma,exp):
     samples = []
