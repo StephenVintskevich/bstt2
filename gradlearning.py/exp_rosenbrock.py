@@ -19,29 +19,32 @@ import numpy as np
 from als import ALSGrad,ALS
 
 #Parameters
-order = 15
-degree = 2
-maxGroupSize = 5
-trainSampleSize=25
+order = 10
+degree = 4
+maxGroupSize = 4
+trainSampleSize=2000
 maxSweeps=15
 
 # Dynamics
-bandSize = 5
-decay = 5
-A = np.zeros([order,order])
-A += np.diag(np.random.rand(order))
-eps = 1
-for i in range(1,bandSize):
-    eps/=decay
-    A += eps*np.diag(np.random.rand(order-i),-i)
-    A += eps*np.diag(np.random.rand(order-i),i)
-print(A)
-
 def f(x):
-    return np.einsum('ij,jk,ik->i',x,A,x)
+    N = x.shape[1]
+    res = 0
+    for i in range(N-1):
+        res += 100*(x[:,i+1]-x[:,i]**2)**2+(1-x[:,i])**2
+    return res
+
+def df(x):
+    N = x.shape[1]
+    res = [0]*N
+    for i in range(N-1):
+        res[i]+=(-400*(x[:,i+1]-x[:,i]**2)*x[:,i]-2*(1-x[:,i]))
+    for i in range(1,N):
+        res[i]+= 200*(x[:,i]-x[:,i-1]**2)
+    return np.array(res).T
 
 train_points = 2*np.random.rand(trainSampleSize,order)-1
-train_values = train_points@(A+A.T)
+train_values = df(train_points)
+print(train_values.shape)
 train_measures,train_measures_grad = legendre_measures_grad2(train_points, degree)
 #train_measures,train_measures_grad = monomial_measures_grad2(train_points, degree)
 augmented_train_measures =  \
@@ -70,9 +73,9 @@ solver.maxGroupSize=maxGroupSize
 solver.method = 'l2'
 solver.run()
 
-testSampleSize = int(2e4)
+testSampleSize = int(5e3)
 test_points = 2*np.random.rand(testSampleSize,order)-1
-test_values = test_points@(A+A.T)
+test_values =  df(test_points)
 test_measures,test_measures_grad = legendre_measures_grad2(test_points, degree)
 #test_measures,test_measures_grad = monomial_measures_grad2(test_points, degree)
 augmented_test_measures =  \
@@ -105,7 +108,7 @@ values = coeffs.evaluate(augmented_test_measures)
 values2 = coeffs.evaluate(augmented_train_measures)
 a = legendre_measures(np.array([[0.0]*order]), degree)
 a = np.concatenate([a, np.ones((1,1,degree+1))], axis=0) 
-c = coeffs.evaluate(a)[0]
+c = coeffs.evaluate(a)[0]-(order - 1)
 print("L2 scalar: ",np.linalg.norm(values-c -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2-c -  train_values2) / np.linalg.norm(train_values2))
 
 

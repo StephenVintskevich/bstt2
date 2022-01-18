@@ -193,6 +193,7 @@ def random_homogenous_polynomial_sum_grad(_univariateDegrees, _totalDegree, _max
         leftSlices = np.cumsum([0] + leftSizes).tolist()
         rightSizes = [MaxSize(r,k) for r in range(_totalDegree+1)]
         rightSlices = np.cumsum([0] + rightSizes).tolist()
+
         for l in range(_totalDegree+1):
             for r in range(l, _totalDegree+1):  # If a polynomial of degree l is multiplied with another polynomial the degree must be at least l.
                 m = r-l  # 0 <= m <= _totalDegree-l <= _totalDegree <= _univariateDegrees[m]
@@ -215,8 +216,6 @@ def random_homogenous_polynomial_sum_grad(_univariateDegrees, _totalDegree, _max
     #blocks.append([block[l,d-l,d] for d in range(_totalDegree+1) for l in range(d+1)])  # l+m == d <--> m == d-l
     ranks.append(_totalDegree)
     blocks.append([block[d-1,_totalDegree-d,0] for d in range(1,_totalDegree+1)])
-    print(blocks[-2])
-    print(blocks[-1])
     return BlockSparseTT.random(dimensions.tolist()+[_totalDegree+1], ranks, blocks)
 
 def random_homogenous_polynomial_sum_system(_univariateDegrees, _interactionranges, _totalDegree, _maxGroupSize,_selectionMatrix):
@@ -453,6 +452,18 @@ def monomial_measures(_points, _degree):
     ret = _points.T[...,None]**np.arange(_degree+1)[None,None]
     assert ret.shape == (M, N, _degree+1)
     return ret
+
+def monomial_measures_grad2(_points, _degree):
+    N,M = _points.shape
+    ret = _points.T[...,None]**np.arange(_degree+1)[None,None]
+    ret_der =  _points.T[...,None]**np.arange(-1,_degree)[None,None]
+    ret_der[:,:,0] = 0
+    s =  np.arange(_degree+1)
+    s[0] = 1
+    ret_der*= s
+    assert ret.shape == (M, N, _degree+1)
+    assert ret_der.shape == (M, N, _degree+1)
+    return ret,ret_der
 
 def sinecosine_measures(_points):
     N,M = _points.shape # sample x order

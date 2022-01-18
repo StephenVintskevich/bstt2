@@ -92,18 +92,40 @@ def lennardJonesParam2(x,sigma,exp):
                 res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
     return res
 
-def lennardJonesParam2Mod(x,sigma,exp):
+def lennardJonesParam2Mod(x,exp):
     n = len(x)
     res = np.zeros([n])
     for i in range(n):
         for j in range(n):
             if i != j:
-                res[i] +=6/sigma[i,j]*((sigma[i,j]/(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/(x[i]-x[j]))**(exp+1)  )
+                res[i] +=(2*(1/(x[i]-x[j]))**(2*exp+1) -(1/(x[i]-x[j]))**(exp+1)  )
                 #res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
         if i > 0: 
             res[i]*= (x[i]-x[i-1])**(2*exp+1)
+        #if i > 1: 
+        #    res[i]*= (x[i]-x[i-2])**(2*exp+1)
         if i < n-1:
             res[i]*= (x[i]-x[i+1])**(2*exp+1)
+        #if i < n-2:
+        #    res[i]*= (x[i]-x[i+2])**(2*exp+1)
+    return res
+
+
+def lennardJonesParam3Mod(x,exp):
+    n = len(x)
+    res = np.zeros([n])
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                res[i] +=((1/(x[i]-x[j]))**(2*exp+1) -(1/(x[i]-x[j]))**(exp+1)  )
+        if i > 0: 
+            res[i]*= (x[i]-x[i-1])**(2*exp+1)
+        #if i > 1: 
+        #    res[i]*= (x[i]-x[i-2])**(2*exp+1)
+        if i < n-1:
+            res[i]*= (x[i]-x[i+1])**(2*exp+1)
+        #if i < n-2:
+        #    res[i]*= (x[i]-x[i+2])**(2*exp+1)
     return res
 
 
@@ -111,7 +133,7 @@ def randNum(a,b):
     return (b-a)*np.random.rand()+a
 
 
-def lennardJonesSamplesMod(order,number_of_samples,c,sigma,exp):
+def lennardJonesSamplesMod(order,number_of_samples,c,exp,mod=0):
     samples = []
     count = 0
     a=1.0
@@ -127,7 +149,10 @@ def lennardJonesSamplesMod(order,number_of_samples,c,sigma,exp):
     #samples =  (2 * np.random.rand(order,number_of_samples) - 1)
     derivatives = []
     for k in range(number_of_samples):
-        derivatives.append(lennardJonesParam2Mod(samples[:,k],sigma,exp))
+        if mod == 0:
+            derivatives.append(lennardJonesParam2Mod(samples[:,k],exp))
+        else:
+            derivatives.append(lennardJonesParam3Mod(samples[:,k],exp))
     derivatives = np.column_stack(derivatives)
     
     assert samples.shape == derivatives.shape

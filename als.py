@@ -29,6 +29,8 @@ class ALS(object):
         self.smin = 0.01
         self.sminFactor = 0.01
         self.maxGroupSize = _maxGroupSize
+        self.method = 'l1'
+
         if (not _localH1Gramians):
             self.localH1Gramians = [np.eye(d) for d in self.bstt.dimensions]
         else:
@@ -175,55 +177,66 @@ class ALS(object):
         R = self.rightStack[-1]
         coreBlocks = self.bstt.blocks[self.bstt.corePosition]
         N = len(self.values)
-
-        LGH1 = self.leftH1GramianStack[-1]
-        EGH1 = self.localH1Gramians[self.bstt.corePosition]
-        RGH1 = self.rightH1GramianStack[-1]
-
-        LGL2 = self.leftL2GramianStack[-1]
-        EGL2 = self.localL2Gramians[self.bstt.corePosition]
-        RGL2 = self.rightL2GramianStack[-1]
-        assert np.allclose(LGL2, np.eye(LGL2.shape[0]), rtol=1e-12, atol=1e-12)
-
-        Op_blocks = []
-        Weights = []
-        Tr_blocks = []
-        for block in coreBlocks:
-            op = np.einsum('nl,ne,nr -> nler',
-                           L[:, block[0]], E[:, block[1]], R[:, block[2]])
-            Op_blocks.append(op.reshape(N, -1))
-
-            # update stacks after diagonalization of left and right gramian
-            Le, LP = np.linalg.eigh(LGH1[block[0], block[0]])
-            Ee, EP = np.linalg.eigh(EGH1[block[1], block[1]])
-            Re, RP = np.linalg.eigh(RGH1[block[2], block[2]])
-            #assert np.allclose(LP.T@LGH1[block[0],block[0]]@LP, np.diag(Le), rtol=1e-12, atol=1e-12)
-            #assert np.allclose(RP.T@RGH1[block[2],block[2]]@RP, np.diag(Re), rtol=1e-12, atol=1e-12),RP.T@RGH1[block[2],block[2]]@RP
-
-            RPL2 = RP.T@RGL2[block[2], block[2]]@RP
-            Re = Re/np.diag(RPL2)
-
-            tr = np.einsum('il,jm,kn->ijklmn', LP, EP, RP)
-            Tr_blocks.append(tr.reshape(
-                Op_blocks[-1].shape[1], Op_blocks[-1].shape[1]))
-
-            Weights.extend(np.einsum('i,j,k->ijk', Le, Ee, Re).reshape(-1))
-        Op = np.concatenate(Op_blocks, axis=1)
-        Transform = block_diag(*Tr_blocks)
-        assert np.allclose(Transform@Transform.T,
-                           np.eye(Transform.shape[0]), rtol=1e-14, atol=1e-14)
-
-        Weights = np.sqrt(Weights)
-        inverseWeightMatrix = np.diag(np.reciprocal(Weights))
-
-        OpTr = Op@Transform@inverseWeightMatrix
-        reg = LassoCV(eps=1e-5, cv=10, random_state=0,
-                      fit_intercept=False).fit(OpTr, self.values)
-        Res = reg.coef_
-
-        core[...] = BlockSparseTensor(
-            Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
-
+        
+        if self.method == 'l1':
+            LGH1 = self.leftH1GramianStack[-1]
+            EGH1 = self.localH1Gramians[self.bstt.corePosition]
+            RGH1 = self.rightH1GramianStack[-1]
+    
+            LGL2 = self.leftL2GramianStack[-1]
+            EGL2 = self.localL2Gramians[self.bstt.corePosition]
+            RGL2 = self.rightL2GramianStack[-1]
+            assert np.allclose(LGL2, np.eye(LGL2.shape[0]), rtol=1e-12, atol=1e-12)
+    
+            Op_blocks = []
+            Weights = []
+            Tr_blocks = []
+            for block in coreBlocks:
+                op = np.einsum('nl,ne,nr -> nler',
+                               L[:, block[0]], E[:, block[1]], R[:, block[2]])
+                Op_blocks.append(op.reshape(N, -1))
+    
+                # update stacks after diagonalization of left and right gramian
+                Le, LP = np.linalg.eigh(LGH1[block[0], block[0]])
+                Ee, EP = np.linalg.eigh(EGH1[block[1], block[1]])
+                Re, RP = np.linalg.eigh(RGH1[block[2], block[2]])
+                #assert np.allclose(LP.T@LGH1[block[0],block[0]]@LP, np.diag(Le), rtol=1e-12, atol=1e-12)
+                #assert np.allclose(RP.T@RGH1[block[2],block[2]]@RP, np.diag(Re), rtol=1e-12, atol=1e-12),RP.T@RGH1[block[2],block[2]]@RP
+    
+                RPL2 = RP.T@RGL2[block[2], block[2]]@RP
+                Re = Re/np.diag(RPL2)
+    
+                tr = np.einsum('il,jm,kn->ijklmn', LP, EP, RP)
+                Tr_blocks.append(tr.reshape(
+                    Op_blocks[-1].shape[1], Op_blocks[-1].shape[1]))
+    
+                Weights.extend(np.einsum('i,j,k->ijk', Le, Ee, Re).reshape(-1))
+            Op = np.concatenate(Op_blocks, axis=1)
+            Transform = block_diag(*Tr_blocks)
+            assert np.allclose(Transform@Transform.T,
+                               np.eye(Transform.shape[0]), rtol=1e-14, atol=1e-14)
+    
+            Weights = np.sqrt(Weights)
+            inverseWeightMatrix = np.diag(np.reciprocal(Weights))
+    
+            OpTr = Op@Transform@inverseWeightMatrix
+            reg = LassoCV(eps=1e-5, cv=10, random_state=0,
+                          fit_intercept=False).fit(OpTr, self.values)
+            Res = reg.coef_
+    
+            core[...] = BlockSparseTensor(
+                Transform@inverseWeightMatrix@Res, coreBlocks, core.shape).toarray()
+        elif self.method == 'l2':
+            Op_blocks = []
+            for block in coreBlocks:
+                op = np.einsum('nl,ne,nr -> nler', L[:, block[0]], E[:, block[1]], R[:, block[2]])
+                Op_blocks.append(op.reshape(N,-1))
+            Op = np.concatenate(Op_blocks, axis=1)
+            # Res = np.linalg.solve(Op.T @ Op, Op.T @ self.values)
+            Res, *_ = np.linalg.lstsq(Op, self.values, rcond=None)  # When Op.T@Op is singular (less samples then dofs in this component) then lstsq returns the minimal norm solution.
+            core[...] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
+        else:
+            assert False, "No valid method chosen, methods are l1 or l2"
         if self.verbosity >= 2:
             print(
                 f"microstep.  (residual: {pre_res:.2e} --> {self.residual():.2e})")
@@ -328,7 +341,7 @@ class ALSGrad(object):
                 comp_measure_grad = np.einsum('ler, me  -> lmr', self.bstt.components[self.bstt.corePosition+1], self.measurements_grad[self.bstt.corePosition+1])
                 stack2 = np.einsum('imk, lmn, kmn -> iml', comp_measure_grad,comp_measure_grad, self.rightStack1[-1])
                 stack2rhs = np.einsum('imk, m,km -> im', comp_measure_grad,self.values[:,self.bstt.corePosition+1],  self.rightStack1rhs[-1])
-                if self.bstt.corePosition+1 == self.bstt.order-2:
+                if self.bstt.corePosition+1 < self.bstt.order-2:
                     stack2 += np.einsum('imk, lmn, kmn -> iml', comp_measure,comp_measure, self.rightStack2[-1])
                     stack2rhs += np.einsum('imk, km -> im', comp_measure, self.rightStack2rhs[-1])
       
@@ -372,7 +385,7 @@ class ALSGrad(object):
     def residual(self):
         res = 0
         for pos in range(self.bstt.order-1):
-            tmp_measures = self.measurements
+            tmp_measures = self.measurements.copy()
             tmp_measures[pos] = self.measurements_grad[pos]
             tmp_res = self.bstt.evaluate(tmp_measures)
             res += np.linalg.norm(tmp_res -  self.values[:,pos])**2    
@@ -389,6 +402,8 @@ class ALSGrad(object):
         L2rhs = self.leftStack2rhs[-1]
         E = self.measurements[self.bstt.corePosition]
         E_grad = self.measurements_grad[self.bstt.corePosition]
+ 
+
         E_op = np.einsum('mp,mq->pmq',E,E)
         E_grad_op = np.einsum('mp,mq->pmq',E_grad,E_grad)
         R1 = self.rightStack1[-1]
@@ -397,22 +412,31 @@ class ALSGrad(object):
         R2rhs = self.rightStack2rhs[-1]
         coreBlocks = self.bstt.blocks[self.bstt.corePosition]
 
-        Res_blocks = []
-        for block in coreBlocks:
-            op = np.einsum('imk,pmq,lmn -> iplkqn', L1[block[0],:, block[0]], E_op[block[1],:, block[1]], R2[block[2],:, block[2]])
-            op += np.einsum('imk,pmq,lmn -> iplkqn', L2[block[0],:, block[0]], E_op[block[1],:, block[1]], R1[block[2],:, block[2]])
-            op += np.einsum('imk,pmq,lmn -> iplkqn', L1[block[0],:, block[0]], E_grad_op[block[1],:, block[1]], R1[block[2],:, block[2]])
-            dim = op.shape[0]*op.shape[1]*op.shape[2]
-            op = op.reshape(dim,dim)
+        Op_blocks = []
+        Rhs_blocks = []
+        for block1 in coreBlocks:
+            Op_blocks_col = []
+            for block2 in coreBlocks:
+                op = np.einsum('imk,pmq,lmn -> iplkqn', L2[block1[0],:, block2[0]], E_op[block1[1],:, block2[1]], R1[block1[2],:, block2[2]])
+                if self.bstt.corePosition < self.bstt.order-2:
+                    op += np.einsum('imk,pmq,lmn -> iplkqn', L1[block1[0],:, block2[0]], E_op[block1[1],:, block2[1]], R2[block1[2],:, block2[2]])
+                op += np.einsum('imk,pmq,lmn -> iplkqn', L1[block1[0],:, block2[0]], E_grad_op[block1[1],:, block2[1]], R1[block1[2],:, block2[2]])
+                dim1 = op.shape[0]*op.shape[1]*op.shape[2]
+                dim2 = op.shape[3]*op.shape[4]*op.shape[5]
+                Op_blocks_col.append( op.reshape(dim1,dim2))
             
-            rhs = np.einsum('im,mp,lm -> ipl', L1rhs[block[0],:], E[:,block[1]], R2rhs[block[2],:])
-            rhs += np.einsum('im,mp,lm -> ipl', L2rhs[block[0],:], E[:,block[1]], R1rhs[block[2],:])
-            rhs += np.einsum('im,mp,lm,m -> ipl', L1rhs[block[0],:], E_grad[:,block[1]], R1rhs[block[2],:],self.values[:,self.bstt.corePosition])
-            rhs = rhs.reshape(dim)
-            Res_blocks.append(np.linalg.solve(op, rhs))
-
-        Res = np.concatenate(Res_blocks, axis=0)
-        #Res = np.linalg.solve(Op, Rhs)
+            rhs = np.einsum('im,mp,lm -> ipl', L2rhs[block1[0],:], E[:,block1[1]], R1rhs[block1[2],:])
+            if self.bstt.corePosition < self.bstt.order-2:
+                rhs += np.einsum('im,mp,lm -> ipl', L1rhs[block1[0],:], E[:,block1[1]], R2rhs[block1[2],:])
+            rhs += np.einsum('im,mp,lm,m -> ipl', L1rhs[block1[0],:], E_grad[:,block1[1]], R1rhs[block1[2],:],self.values[:,self.bstt.corePosition])
+            rhs = rhs.reshape(dim1)
+            
+            Rhs_blocks.append(rhs.reshape(dim1))
+            Op_blocks.append(np.concatenate(Op_blocks_col, axis=1))
+           
+        Op = np.concatenate(Op_blocks, axis=0)
+        Rhs = np.concatenate(Rhs_blocks, axis=0)
+        Res = np.linalg.solve(Op, Rhs)
         #Res, *_ = np.linalg.lstsq(Op, self.values, rcond=None)  # When Op.T@Op is singular (less samples then dofs in this component) then lstsq returns the minimal norm solution.
         core[...] = BlockSparseTensor(Res, coreBlocks, core.shape).toarray()
 
