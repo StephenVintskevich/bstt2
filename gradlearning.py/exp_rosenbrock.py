@@ -19,9 +19,9 @@ import numpy as np
 from als import ALSGrad,ALS
 
 #Parameters
-order = 10
+order = 20
 degree = 4
-maxGroupSize = 4
+maxGroupSize = 3
 trainSampleSize=2000
 maxSweeps=15
 

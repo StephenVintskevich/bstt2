@@ -9,6 +9,11 @@ import time
 
 
 class ALS(object):
+    """
+    This is the standard scalar ALS on block sparse tensor trains. As methods there are l1 and l2. l2 is the standard least square solver.
+    l1 is the regularized Lasso solver (see Philipp Trunsckes papers).
+    By selecting increase rank and setting _maxGroupSize one gets rank adaptvity in the sense of shadow ranks as introduced by Sebastian Kraemer.
+    """
     def __init__(self, _bstt, _measurements, _values, _localL2Gramians=None, _localH1Gramians=None, _maxGroupSize=3, _verbosity=0):
         assert isinstance(_bstt, BlockSparseTT)
         self.bstt = _bstt
@@ -291,6 +296,12 @@ class ALS(object):
             print(f"Final residuum: {self.residual():.2e}")
 
 class ALSGrad(object):
+    '''
+    This is an ALS which learns the scalar function from data of the gradient. _measurements are the evaluation of the basis funcitons
+    as above. _measurements_grad are the evaluation of the derivatives of the basis functions.
+    Note: It is important to choose a block sparse format which fixes at least one degree of freedom, e.g. the constant polynomial
+    since else the problem is not unique.
+    '''
     def __init__(self, _bstt, _measurements,_measurements_grad, _values, _verbosity=0):
         self.bstt = _bstt
         assert isinstance(_measurements, np.ndarray) and isinstance(_values, np.ndarray)
@@ -481,6 +492,9 @@ class ALSGrad(object):
         if self.verbosity >= 1: print(f"Final residuum: {self.residual():.2e}")
 
 class ALSSystem(object):
+    '''
+    This is an ALS which learns a system of equation with the use of a selection tensor (as in A. Goessmann et al.)
+    '''
     def __init__(self, _bstt, _measurements, _values, _localL2Gramians=None, _localH1Gramians=None, _maxGroupSize=3, _verbosity=0):
         self.bstt = _bstt
         assert isinstance(_bstt, BlockSparseTTSystem)
@@ -735,6 +749,9 @@ class ALSSystem(object):
 
 
 class ALSSystem2(object):
+    '''
+    This is an ALS which learns a system of equation with the use of weight sharing.
+    '''
     def __init__(self, _coeffs, _measurements, _values, _verbosity=0):
         self.coeffs = _coeffs
         assert isinstance(_coeffs, BlockSparseTTSystem2)
