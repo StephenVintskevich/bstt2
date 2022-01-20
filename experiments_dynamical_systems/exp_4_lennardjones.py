@@ -30,7 +30,7 @@ interactions = [5,7]
 trainSampleSizes = [2500,4000,5500,7000]
 maxSweeps=8
 c = 1.0
-mod = 1
+mod = 0
 res = np.zeros((len(orders),len(trainSampleSizes),len(interactions),len(maxGroupSizes)))
 #Model Parameters
 exp = 1
@@ -78,4 +78,4 @@ for (ii,order) in enumerate(orders):
                 values2 = coeffs.evaluate(augmented_train_measures)
                 print("L2: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values) / np.linalg.norm(train_values))
                 res[ii,jj,kk,ll] = np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)
-                np.save(f'exp_3_lennardjones.data',res)
+                np.save('exp_4_lennardjones.data',res)
