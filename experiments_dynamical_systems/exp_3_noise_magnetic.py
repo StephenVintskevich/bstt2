@@ -54,6 +54,7 @@ for ii in range(len(order)):
                     train_points,train_values = magneticDipolesSamples(order[ii],trainSampleSize[jj],M,x,I)
                     #train_measures = legendre_measures(train_points, degree,-b,b)
                     
+                    #adding gaussian noise
                     train_values += np.random.normal(0,sigma[ss],train_values.shape)
                     
                     train_measures = sinecosine_measures(train_points)

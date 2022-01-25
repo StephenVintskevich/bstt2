@@ -5,8 +5,6 @@ Created on Wed Nov 17 10:25:27 2021
 
 @author: goette
 """
-
-#without multiplying by r^exp
 import os
 import sys
 
@@ -80,4 +78,4 @@ for (ii,order) in enumerate(orders):
                 values2 = coeffs.evaluate(augmented_train_measures)
                 print("L2: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values) / np.linalg.norm(train_values))
                 res[ii,jj,kk,ll] = np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)
-                np.save('exp_4_lennardjones.data',res)
+                np.save('exp_5_lennardjones.data',res)

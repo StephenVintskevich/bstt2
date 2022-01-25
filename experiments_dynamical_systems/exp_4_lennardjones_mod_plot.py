@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib.colors import LogNorm
 import matplotlib.ticker as mticker
 
-res = np.load("exp_3_lennardjones.data.npy") #order x interaction x trainSampleSize (5,3,7)
+res = np.load("exp_4_lennardjones.data.npy") #order x interaction x trainSampleSize (5,3,7)
 print(res.shape)
 
 t = [1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1,2e-1]
@@ -41,5 +41,5 @@ cbar = fig.colorbar(pos, ax=ax, shrink=0.9)
 cbar.set_ticks(t)
 cbar.set_ticklabels(t)
 
-plt.savefig('exp_3_lennard_jones_mod')
+plt.savefig('exp_4_lennard_jones_mod')
 plt.show()
