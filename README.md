@@ -26,3 +26,16 @@ exp_3_noise_magnetic.py trigonometric basisfunctions + gaussian noise
 exp_3_lennardjones.py exp=1 and no sign and abs values and multiplying by (x_k-x_k-1)^(2exp+1), calling lennardJonesParam3Mod
 
 exp_5_lennardjones.pyexp=1 and with sign and abs values and multiplying by (x_k-x_k-1)^(2exp+1), calling lennardJonesParam2Mod
+
+
+### Usage:
+
+Easiest: Download Anaconda:
+
+conda create --name bstt
+
+conda activate bstt
+
+conda install numpy matplotlib scipy scikit-learn python3
+
+Then the python files can be run as python3 file.py
