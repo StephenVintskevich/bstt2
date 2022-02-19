@@ -23,6 +23,8 @@ order = 15
 degree = 2
 maxGroupSize = 5
 trainSampleSize=25
+trainSampleSize2=trainSampleSize*order
+
 maxSweeps=15
 
 # Dynamics
@@ -111,4 +113,6 @@ print("L2 scalar: ",np.linalg.norm(values-c -  test_values) / np.linalg.norm(tes
 
 values = coeffs2.evaluate(augmented_test_measures)
 values2 = coeffs2.evaluate(augmented_train_measures)
-print("L2 scalar: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values2) / np.linalg.norm(train_values2))
+c = coeffs2.evaluate(a)[0]
+
+print("L2 scalar: ",np.linalg.norm(values -c-  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2-c -  train_values2) / np.linalg.norm(train_values2))

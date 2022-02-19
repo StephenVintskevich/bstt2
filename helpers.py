@@ -98,14 +98,14 @@ def lennardJonesParam2Mod(x,exp):
     for i in range(n):
         for j in range(n):
             if i != j:
-                res[i] +=((1/(x[i]-x[j]))**(2*exp+1) -(1/(x[i]-x[j]))**(exp+1)  )
-                #res[i] += np.sign(x[i]-x[j])*6/sigma[i,j]*((sigma[i,j]/np.abs(x[i]-x[j]))**(2*exp+1) -(sigma[i,j]/np.abs(x[i]-x[j]))**(exp+1)  )
-        #if i > 0: 
-        #    res[i]*= (x[i]-x[i-1])**(2*exp+1)
+                #res[i] +=((1/(x[i]-x[j]))**(2*exp+1) -(1/(x[i]-x[j]))**(exp+1)  )
+                res[i] += np.sign(x[i]-x[j])*((1/np.abs(x[i]-x[j]))**(2*exp+1) -(1/np.abs(x[i]-x[j]))**(exp+1)  )
+        if i > 0: 
+            res[i]*= (x[i]-x[i-1])**(2*exp+1)
         #if i > 1: 
         #    res[i]*= (x[i]-x[i-2])**(2*exp+1)
-        #if i < n-1:
-        #    res[i]*= (x[i]-x[i+1])**(2*exp+1)
+        if i < n-1:
+            res[i]*= (x[i]-x[i+1])**(2*exp+1)
         #if i < n-2:
         #    res[i]*= (x[i]-x[i+2])**(2*exp+1)
     return res

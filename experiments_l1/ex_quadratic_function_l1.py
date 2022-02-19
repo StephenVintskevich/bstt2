@@ -32,7 +32,7 @@ for i in range(1,bandSize):
     
 print(np.around(A,4))
 f = lambda xs: np.einsum('jk,ij,ik->i',A,xs,xs)  #NOTE: This functions gets peakier for larger M!
-trainSampleSize = int(4000)
+trainSampleSize = int(5000)
 testSampleSize = int(1e5)
 
 

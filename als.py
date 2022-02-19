@@ -225,7 +225,7 @@ class ALS(object):
             inverseWeightMatrix = np.diag(np.reciprocal(Weights))
     
             OpTr = Op@Transform@inverseWeightMatrix
-            reg = LassoCV(eps=1e-5, cv=10, random_state=0,
+            reg = LassoCV(eps=1e-7, cv=10, random_state=0,
                           fit_intercept=False).fit(OpTr, self.values)
             Res = reg.coef_
     
@@ -845,12 +845,14 @@ class ALSSystem2(object):
             Op_eq.append(np.concatenate(Op_blocks_eq, axis=1))
         
         # Optimize interaction range many cores
+        used = []
         for k in range(self.coeffs.interactions):
             core = self.coeffs.bstts[k].components[self.coeffs.corePosition]
             eqs = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition]
                    == k else False for eq in range(self.coeffs.numberOfEquations)]
-            if sum(eqs) == 0: continue # skip if core is not used at the current position                
+            if sum(eqs) == 0: continue # skip if core is not used at the current position  
             if sum(eqs) == 1 or (self.direction == 'right' and k == self.coeffs.interactions-1 and self.coeffs.corePosition > 0) or  (self.direction == 'left' and k == 0 and self.coeffs.corePosition < self.coeffs.order-1):
+                used.append('first')              
                 Op_eq_aux = []
                 for i in range(len(eqs)):
                     if eqs[i]:
@@ -864,6 +866,8 @@ class ALSSystem2(object):
                 core[:, :, :] = BlockSparseTensor(
                     Res, coreBlocks, core.shape).toarray()
             elif (self.direction == 'right' and k == 0) or (self.direction == 'left' and k == 0 and self.coeffs.corePosition == self.coeffs.order-1): 
+                used.append('second')            
+
                 eqs2 = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition-1]
                        == k else False for eq in range(self.coeffs.numberOfEquations)]
                 diff = np.array(eqs) == np.array(eqs2)
@@ -906,6 +910,7 @@ class ALSSystem2(object):
                         self.coeffs.corePosition-1]].components[self.coeffs.corePosition-1] = \
                         np.einsum('ler,rs->les',comp,core_switched_eq)
             elif self.direction == 'left' and k == self.coeffs.interactions-1 or (self.direction == 'right' and k ==  self.coeffs.interactions-1 and self.coeffs.corePosition ==0): 
+                used.append('third')              
                 eqs2 = [True if self.coeffs.selectionMatrix[eq, self.coeffs.corePosition+1]
                        == k else False for eq in range(self.coeffs.numberOfEquations)]
                 diff = np.array(eqs) == np.array(eqs2)
@@ -952,7 +957,7 @@ class ALSSystem2(object):
         self.coeffs.verify()
         if self.verbosity >= 2:
             print(
-                f"microstep.  (residual: {self.prev_residual:.2e} --> {self.residual():.2e})")
+                f"microstep.  (residual: {self.prev_residual:.2e} --> {self.residual():.2e}), Direction {self.direction}, Core {self.coeffs.corePosition}, used {used}, interaction {self.coeffs.interactions}")
 
     def run(self):
         self.prev_residual = self.residual()
