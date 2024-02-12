@@ -19,8 +19,8 @@ rcParams['ytick.labelsize']=SIZE
 rcParams['legend.fontsize']=SIZE
 rcParams['figure.titlesize']=SIZE
 
-res1 = np.load("10ptcls_gp4-8ev_int5_smpls4-10_nostop.data.npy") #order x interaction x trainSampleSize (5,3,7)
-res2 = np.load("10ptcls_gp4-8ev_int5_smpls1-3_nostop.data.npy")
+res1 = np.load("data/10ptcls_gp4-8ev_int5_smpls4-10_nostop.data.npy") #order x interaction x trainSampleSize (5,3,7)
+res2 = np.load("data/10ptcls_gp4-8ev_int5_smpls1-3_nostop.data.npy")
 res1 = np.array(res1[0,:,0,:,0,:])
 res2 = np.array(res2[0,:,0,:,0,:])
 maxGroupSizeLen = len(res1[0,:,0])
