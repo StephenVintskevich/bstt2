@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 17 10:25:27 2021
-
-@author: goette
-"""
 import numpy as np 
 from misc import  __block, sinecosine_measures, random_homogenous_polynomial_sum_system2,random_fixed_variable_sum_system2,legendre_measures
 from helpers import magneticDipolesSamples, SMat

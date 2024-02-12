@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 11 10:15:19 2022
-
-@author: goette
-"""
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LogNorm
