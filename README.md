@@ -31,13 +31,6 @@ The folder for each system contains a file to generate the data for each example
 
 1. FPUT
 
-2. Magnetic dipole chain:
-
-exp_1_magnetic.py trigonometric dictionary
-
-exp_2_magnetic.py polynomial dictionary
-
-exp_3_noise_magnetic.py trigonometric dictionary + gaussian noise
-
+2. Magnetic dipole chain
 
 3. Lennard-Jones
