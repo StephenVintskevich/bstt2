@@ -86,4 +86,5 @@ for ii in range(len(order)):
                     values2 = coeffs.evaluate(augmented_train_measures)
                     print("l2 on test data: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values) / np.linalg.norm(train_values))
                     res[ii,kk,jj,ss,ll] = np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)
-                    np.save(f'exp_3_noise_magnetic.data',res)
+
+np.save(f'data/exp_3_noise_magnetic.data',res)

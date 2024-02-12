@@ -3,7 +3,7 @@
 """
 Created on Wed Nov 17 10:25:27 2021
 
-@author: goette
+@author: goette,fuksa
 """
 
 import os
@@ -80,7 +80,8 @@ for ii in range(len(order)):
                 values2 = coeffs.evaluate(augmented_train_measures)
                 print("l2 on test data: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values) / np.linalg.norm(train_values))
                 res[ii,kk,jj,ll] = np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)
-                np.save(f'new/exp_1_magnetic.data',res)
+
+np.save(f'data/exp_1_magnetic.data',res)
                 
                 
                 

@@ -26,7 +26,7 @@ rcParams['ytick.labelsize']=SIZE
 rcParams['legend.fontsize']=SIZE
 rcParams['figure.titlesize']=SIZE
 
-res = np.load("exp_2_magnetic.data.npy") #order x interaction x trainSampleSize (5,2,7)
+res = np.load("data/exp_2_magnetic.data.npy") #order x interaction x trainSampleSize (5,2,7)
 res = res[0:3,:,:]
 
 ticks_loc_x = [5+2*i for i in range(1,8)]
@@ -52,5 +52,5 @@ ax.legend(handles[::-1],labels[::-1],frameon=False)
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-plt.savefig('exp_2_magnetic_plot.pdf',format='pdf',bbox_inches='tight')
+plt.savefig('figures/exp_2_magnetic_plot.pdf',format='pdf',bbox_inches='tight')
 plt.show()

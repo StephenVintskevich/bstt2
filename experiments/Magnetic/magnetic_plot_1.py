@@ -26,7 +26,7 @@ rcParams['ytick.labelsize']=SIZE
 rcParams['legend.fontsize']=SIZE
 rcParams['figure.titlesize']=SIZE
 
-res = np.load("exp_1_magnetic.data.npy") #order x interaction x trainSampleSize (5,3,7)
+res = np.load("data/exp_1_magnetic.data.npy") #order x interaction x trainSampleSize (5,3,7)
 res = np.mean(res,axis=3)
 
 t = [1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1,2e-1]
@@ -62,5 +62,5 @@ for k, ax in enumerate(axes.flat):
 
 fig.tight_layout()
 
-plt.savefig('exp_1_magnetic_plot.pdf',format='pdf')
+plt.savefig('figures/exp_1_magnetic_plot.pdf',format='pdf')
 plt.show()

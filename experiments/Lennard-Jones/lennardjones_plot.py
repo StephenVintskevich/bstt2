@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 11 10:15:19 2022
 
-@author: goette
+@author: fuksa
 """
 
 import matplotlib.pyplot as plt
@@ -66,5 +66,5 @@ ax.set_xlabel('$\\times 10^3$ Number of samples')
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-plt.savefig('exp_1_lennard_jones_mod.pdf',format='pdf',bbox_inches='tight')
+plt.savefig('figures/exp_1_lennard_jones_mod.pdf',format='pdf',bbox_inches='tight')
 plt.show()

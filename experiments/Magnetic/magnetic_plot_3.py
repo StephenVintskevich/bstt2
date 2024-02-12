@@ -27,7 +27,7 @@ rcParams['ytick.labelsize']=SIZE
 rcParams['legend.fontsize']=SIZE
 rcParams['figure.titlesize']=SIZE
 
-res = np.load("exp_3_noise_magnetic.data.npy")
+res = np.load("data/exp_3_noise_magnetic.data.npy")
 print(res.shape)
 res = np.mean(res,axis=4)
 
@@ -75,5 +75,5 @@ labels_size = [f"$d = {d}$" for d in size]
 legend_size = plt.legend(handles_size[::-1],labels_size[::-1],frameon=False)
 fig.add_artist(legend_size)
 
-plt.savefig('exp_3_noise_magnetic.pdf',format='pdf',bbox_inches='tight')
+plt.savefig('figures/exp_3_noise_magnetic.pdf',format='pdf',bbox_inches='tight')
 plt.show()

@@ -3,7 +3,7 @@
 """
 Created on Wed Nov 17 10:25:27 2021
 
-@author: goette
+@author: goette,fuksa
 """
 import os
 import sys
@@ -29,7 +29,7 @@ degrees = [8] # max polynomial degree of the basis
 #maxGroupSize = [1]+[2] +[3]*(order-4)+[2]+[1]
 maxGroupSizes = [4,6,8]
 interactions = [5]
-trainSampleSizes = [1000,2000,3000]
+trainSampleSizes = [1000*i for i in range(1,4)]
 reps = 6
 maxSweeps=8
 c = 1.0
@@ -86,7 +86,7 @@ for (ii,order) in enumerate(orders):
                         for k in range(order):
                             print("L2: ",np.linalg.norm(values[:,k] -  test_values[:,k]) / np.linalg.norm(test_values[:,k]))
                             
-np.save(f'10ptcls_gp4-8ev_int5_smpls1-3_nostop.data',res)
+np.save(f'data/10ptcls_gp4-8ev_int5_smpls1-3_nostop.data',res)
                             
                     
                     

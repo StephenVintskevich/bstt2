@@ -3,7 +3,7 @@
 """
 Created on Wed Nov 17 10:25:27 2021
 
-@author: goette
+@author: goette,fuksa
 """
 
 import os
@@ -74,7 +74,7 @@ for (ii, sampleSize) in enumerate(trainSampleSize):
     
     res[ii] = newres
 
-np.save(f'blah.data',res)
+np.save(f'50ptcls_2-12h_smpls_even_noneven.data',res)
 
 
 

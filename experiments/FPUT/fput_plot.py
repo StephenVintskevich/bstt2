@@ -3,7 +3,7 @@
 """
 Created on Wed Feb 23 16:57:50 2022
 
-@author: jonas
+@author: fuksa
 """
 
 import numpy as np
@@ -25,10 +25,10 @@ rcParams['ytick.labelsize']=SIZE
 rcParams['legend.fontsize']=SIZE
 rcParams['figure.titlesize']=SIZE
 
-res1 = np.load("50ptcls_2-12h_smpls_even_nostop.data.npy")
-res2 = np.load("50ptcls_14-26h_smpls_even_nostop.data.npy")
+res1 = np.load("data/50ptcls_2-12h_smpls_even_nostop.data.npy")
+res2 = np.load("data/50ptcls_14-26h_smpls_even_nostop.data.npy")
 res = np.concatenate((res1,res2))
-res_random = np.load("50ptcls_2-26h_smpls_even_noneven.data.npy")
+res_random = np.load("data/50ptcls_2-26h_smpls_even_noneven.data.npy")
 
 ticks_x = [2,400,600,800,1000,1200,1400,1600,1800,2000,2200,2400,2600]
 ticks_x = [2*i for i in range(1,14)]
@@ -45,5 +45,5 @@ ax.set_ylabel('Residuum')
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-plt.savefig("fput.pdf",format='pdf',bbox_inches='tight')
+plt.savefig("figures/fput.pdf",format='pdf',bbox_inches='tight')
 plt.show()
