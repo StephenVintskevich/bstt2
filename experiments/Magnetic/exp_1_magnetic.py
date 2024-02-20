@@ -15,6 +15,8 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
+folder = "experiments/Magnetic/"
+
 # Parameters
 order = [10,20,30,40,50]
 degree = 2
@@ -73,7 +75,7 @@ for ii in range(len(order)):
                 print("l2 on test data: ",np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)," on training data: ",np.linalg.norm(values2 -  train_values) / np.linalg.norm(train_values))
                 res[ii,kk,jj,ll] = np.linalg.norm(values -  test_values) / np.linalg.norm(test_values)
 
-np.save(f'data/exp_1_magnetic.data',res)
+np.save(folder+'data/exp_1_magnetic.data',res)
                 
                 
                 

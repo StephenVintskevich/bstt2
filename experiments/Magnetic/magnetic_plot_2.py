@@ -15,10 +15,13 @@ rcParams['axes.titlesize']=SIZE
 rcParams['axes.labelsize']=SIZE
 rcParams['xtick.labelsize']=SIZE
 rcParams['ytick.labelsize']=SIZE
-rcParams['legend.fontsize']=SIZE
+rcParams['legend.fontsize']=SIZE-1
 rcParams['figure.titlesize']=SIZE
+rcParams['mathtext.default']='regular'
 
-res = np.load("data/exp_2_magnetic.data.npy") #order x interaction x trainSampleSize (5,2,7)
+folder = "experiments/Magnetic/"
+
+res = np.load(folder+"data/exp_2_magnetic.data.npy") #order x interaction x trainSampleSize (5,2,7)
 res = res[0:3,:,:]
 
 ticks_loc_x = [5+2*i for i in range(1,8)]
@@ -26,23 +29,23 @@ system_sizes =[10,20,30]
 interaction = [5]
 
 cmtoinch = 2.54
-fig = plt.figure(figsize=(8.5/cmtoinch,5./cmtoinch))
+fig = plt.figure(figsize=(8.5/cmtoinch,4/cmtoinch))
 
 ax = plt.gca()
-marker = ['x','+','.']
-marker_sizes = [7,9,10]
-line = ['--',':','-.']
-alphas = [.5,.9,1.]
+marker = '.'
+marker_size = 7
+line = ['-',(0,(5,5)),(0,(3,5,1,5))]
+colors = ['tab:orange','tab:blue','tab:green']
 
 for i,size in enumerate(system_sizes):
-    ax.semilogy(ticks_loc_x,res[i,0,:],marker[0],ms=marker_sizes[0],ls=line[i],label=f"$d = ${size}",mew=2,alpha=alphas[i])
+    ax.semilogy(ticks_loc_x,res[i,0,:],marker,ms=marker_size,ls=line[i],lw=.5,label=f"$d = ${size}",mew=1,c=colors[i])
     
 ax.set_xlabel('$\\times 10^3$ Number of samples')
 ax.set_ylabel('Residuum')
 handles,labels = ax.get_legend_handles_labels()
-ax.legend(handles[::-1],labels[::-1],frameon=False)
+ax.legend(handles,labels,frameon=False)
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-plt.savefig('figures/exp_2_magnetic_plot.pdf',format='pdf',bbox_inches='tight')
+plt.savefig(folder+'figures/exp_2_magnetic_plot.pdf',format='pdf',bbox_inches='tight',pad_inches=0)
 plt.show()

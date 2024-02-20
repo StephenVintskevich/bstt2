@@ -15,10 +15,13 @@ rcParams['axes.titlesize']=SIZE
 rcParams['axes.labelsize']=SIZE
 rcParams['xtick.labelsize']=SIZE
 rcParams['ytick.labelsize']=SIZE
-rcParams['legend.fontsize']=SIZE
+rcParams['legend.fontsize']=SIZE-1
 rcParams['figure.titlesize']=SIZE
+rcParams['mathtext.default']='regular'
 
-res = np.load("data/exp_1_magnetic.data.npy") #order x interaction x trainSampleSize (5,3,7)
+folder = "experiments/Magnetic/"
+
+res = np.load(folder+"data/exp_1_magnetic.data.npy") #order x interaction x trainSampleSize (5,3,7)
 res = np.mean(res,axis=3)
 
 t = [1e-4,2e-4,5e-4,1e-3,2e-3,5e-3,1e-2,2e-2,5e-2,1e-1,2e-1]
@@ -52,7 +55,5 @@ for k, ax in enumerate(axes.flat):
     cbar = fig.colorbar(pos,ax=ax,aspect=5,shrink=.6)
     cbar.ax.minorticks_off()
 
-fig.tight_layout()
-
-plt.savefig('figures/exp_1_magnetic_plot.pdf',format='pdf')
+plt.savefig(folder+'figures/exp_1_magnetic_plot.pdf',format='pdf',pad_inches=0,bbox_inches='tight')
 plt.show()

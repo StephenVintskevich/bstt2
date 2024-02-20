@@ -14,28 +14,31 @@ rcParams['axes.titlesize']=SIZE
 rcParams['axes.labelsize']=SIZE
 rcParams['xtick.labelsize']=SIZE
 rcParams['ytick.labelsize']=SIZE
-rcParams['legend.fontsize']=SIZE
+rcParams['legend.fontsize']=SIZE-1
 rcParams['figure.titlesize']=SIZE
+rcParams['mathtext.default']='regular'
 
-res1 = np.load("data/50ptcls_2-12h_smpls_even_nostop.data.npy")
-res2 = np.load("data/50ptcls_14-26h_smpls_even_nostop.data.npy")
+folder = "experiments/FPUT/"
+
+res1 = np.load(folder+"data/50ptcls_2-12h_smpls_even_nostop.data.npy")
+res2 = np.load(folder+"data/50ptcls_14-26h_smpls_even_nostop.data.npy")
 res = np.concatenate((res1,res2))
-res_random = np.load("data/50ptcls_2-26h_smpls_even_noneven.data.npy")
+res_random = np.load(folder+"data/50ptcls_2-26h_smpls_even_noneven.data.npy")
 
 ticks_x = [2,400,600,800,1000,1200,1400,1600,1800,2000,2200,2400,2600]
 ticks_x = [2*i for i in range(1,14)]
 
 cmtoinch = 2.54
-fig = plt.figure(figsize=(8.5/cmtoinch,4/cmtoinch))
+fig = plt.figure(figsize=(8.5/cmtoinch,3.5/cmtoinch))
 
 ax = plt.gca()
-ax.semilogy(ticks_x,res,'x',ls='--',markersize=7,mew=2,label="$\\kappa = 1, \\beta = 0.7$",c='tab:blue')
-ax.semilogy(ticks_x,res_random,'+',ls=':',markersize=9,mew=2,label="random $\\kappa, \\beta$",alpha=.8,c='tab:orange')
+ax.semilogy(ticks_x,res,'.',ls="-",lw=.5,markersize=7,mew=1,label="$\\kappa = 1, \\beta = 0.7$",c='tab:orange')
+ax.semilogy(ticks_x,res_random,'.',ls=(0,(3,5,1,5)),lw=.5,markersize=7,mew=1,label="random $\\kappa, \\beta$",c='tab:blue')
 ax.legend(frameon=False)
 ax.set_xlabel('$\\times 10^2$ Number of samples')
 ax.set_ylabel('Residuum')
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-plt.savefig("figures/fput.pdf",format='pdf',bbox_inches='tight')
+plt.savefig(folder+"figures/fput.pdf",format='pdf',bbox_inches='tight',pad_inches=0)
 plt.show()

@@ -16,10 +16,13 @@ rcParams['axes.titlesize']=SIZE
 rcParams['axes.labelsize']=SIZE
 rcParams['xtick.labelsize']=SIZE
 rcParams['ytick.labelsize']=SIZE
-rcParams['legend.fontsize']=SIZE
+rcParams['legend.fontsize']=SIZE-1
 rcParams['figure.titlesize']=SIZE
+rcParams['mathtext.default']='regular'
 
-res = np.load("data/exp_3_noise_magnetic.data.npy")
+folder = "experiments/Magnetic/"
+
+res = np.load(folder+"data/exp_3_noise_magnetic.data.npy")
 print(res.shape)
 res = np.mean(res,axis=4)
 
@@ -29,14 +32,14 @@ interaction = [5]
 sigma = [1e-1,1e-2,1e-3,1e-4]
 sigma_str = ["$10^{-1}$","$10^{-2}$","$10^{-3}$","$10^{-4}$"]
 
-markers = ["x","+"]
-markersizes = [8,10]
-linestyles = ["--","-.",":"]
-colors = ['tab:blue','tab:orange','tab:green']
-alphas = [.6,1.]
+markers = [".","D"]
+markersizes = [7,4]
+linestyles = ["-",(0,(5,5)),(0,(3,5,1,5))]
+colors = ['tab:orange','tab:blue','tab:green']
+facecolors = np.array([colors,['None','None','None']])
 
 cmtoinch = 2.54
-fig = plt.figure(figsize=(8.5/cmtoinch,5/cmtoinch))
+fig = plt.figure(figsize=(8.5/cmtoinch,4.5/cmtoinch))
 
 ax = plt.gca()
 
@@ -47,25 +50,28 @@ for i,s in enumerate(sigma[:-1]):
                     markers[j],
                     ms=markersizes[j],
                     ls=linestyles[i],
+                    lw=.5,
                     label=f"$\\sigma = {s}$, $d = {d}$",
-                    mew=2,
+                    mew=1,
                     c=colors[i],
-                    alpha=alphas[j])
+                    markerfacecolor=facecolors[j,i]
+                    )
 
 ax.set_xlabel("$\\times 10^2$ Number of samples")
 ax.set_ylabel("Residuum")
 ax.tick_params(direction="in")
 ax.minorticks_off()
 
-handles_sigma = [plt.plot([],marker="",ls=linestyles[i],c=colors[i])[0] for i in range(len(sigma)-1)]
+handles_sigma = [plt.plot([],marker="",ls=linestyles[i],lw=.5,c=colors[i])[0] for i in range(len(sigma)-1)]
 labels_sigma = ["$\\sigma = $" + s for s in sigma_str[:-1]]
-legend_sigma = plt.legend(handles_sigma,labels_sigma,frameon=False,ncols=3,loc='upper center',bbox_to_anchor=(.45,1.15),borderpad=0.)
+legend_sigma = plt.legend(handles_sigma,labels_sigma,frameon=False,ncols=3,loc='upper center',bbox_to_anchor=(.45,1.15),borderpad=0.1)
 fig.add_artist(legend_sigma)
 
-handles_size = [plt.plot([],marker=markers[j],ms=markersizes[j],mew=2,ls="",c='k')[0] for j in range(len(size))]
+facecolorblack = ['k','None']
+handles_size = [plt.plot([],marker=markers[j],ms=markersizes[j],markerfacecolor=facecolorblack[j],mew=1,ls="",c='k')[0] for j in range(len(size))]
 labels_size = [f"$d = {d}$" for d in size]
-legend_size = plt.legend(handles_size[::-1],labels_size[::-1],frameon=False)
+legend_size = plt.legend(handles_size,labels_size,frameon=False)
 fig.add_artist(legend_size)
 
-plt.savefig('figures/exp_3_noise_magnetic.pdf',format='pdf',bbox_inches='tight')
+plt.savefig(folder+'figures/exp_3_noise_magnetic.pdf',format='pdf',bbox_inches='tight',pad_inches=0)
 plt.show()

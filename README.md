@@ -27,7 +27,7 @@ helpers.py: this is the code for the dynamic models, e.g. fermi pasta, lennard j
 
 #### Second level: expermiments/
 
-The folder for each system contains a file to generate the data for each example dynamical system, a plotting file and folders containing data and figures. Note that each script is to be run from within the folder corresponding to the dynamical system at hand.
+The folder for each system contains a file to generate the data for each example dynamical system, a plotting file and folders containing data and figures.
 
 1. FPUT
 

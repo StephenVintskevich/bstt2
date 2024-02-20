@@ -16,6 +16,8 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
+folder = "experiments/Lennard-Jones/"
+
 # Parameters
 orders = [10] # the number of particles
 degrees = [8] # max polynomial degree of the basis
@@ -79,7 +81,7 @@ for (ii,order) in enumerate(orders):
                         for k in range(order):
                             print("L2: ",np.linalg.norm(values[:,k] -  test_values[:,k]) / np.linalg.norm(test_values[:,k]))
                             
-np.save(f'data/10ptcls_gp4-8ev_int5_smpls1-3_nostop.data',res)
+np.save(folder+'data/10ptcls_gp4-8ev_int5_smpls1-3_nostop.data',res)
                             
                     
                     

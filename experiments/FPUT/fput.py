@@ -15,6 +15,8 @@ block = __block()
 import warnings
 warnings.filterwarnings("ignore")
 
+folder = "experiments/FPUT/"
+
 order = 50  
 degree = 3
 maxGroupSize = 2
@@ -66,7 +68,7 @@ for (ii, sampleSize) in enumerate(trainSampleSize):
     
     res[ii] = newres
 
-np.save(f'50ptcls_2-12h_smpls_even_noneven.data',res)
+np.save(folder+"50ptcls_2-12h_smpls_even_noneven.data",res)
 
 
 
