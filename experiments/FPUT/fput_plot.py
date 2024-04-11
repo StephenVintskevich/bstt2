@@ -32,8 +32,8 @@ cmtoinch = 2.54
 fig = plt.figure(figsize=(8.5/cmtoinch,3.5/cmtoinch))
 
 ax = plt.gca()
-ax.semilogy(ticks_x,res,'.',ls="-",lw=.5,markersize=7,mew=1,label="$\\kappa = 1, \\beta = 0.7$",c='tab:orange')
-ax.semilogy(ticks_x,res_random,'.',ls=(0,(3,5,1,5)),lw=.5,markersize=7,mew=1,label="random $\\kappa, \\beta$",c='tab:blue')
+ax.semilogy(ticks_x,res,'.',ls="-",lw=.5,markersize=7,mew=1,label="translationally invariant",c='tab:orange')
+ax.semilogy(ticks_x,res_random,'.',ls=(0,(3,5,1,5)),lw=.5,markersize=7,mew=1,label="disordered",c='tab:blue')
 ax.legend(frameon=False)
 ax.set_xlabel('$\\times 10^2$ Number of samples')
 ax.set_ylabel('Residuum')
