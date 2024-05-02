@@ -3,6 +3,7 @@ import sys
 
 currentdir = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(currentdir)
+parentdir = os.path.dirname(parentdir)
 sys.path.append(parentdir)
 
 import numpy as np 
