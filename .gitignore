@@ -1,7 +1,44 @@
-__pycache__
-*.sw[pon]
-*.cprof
-.cache
-figures
-*.ipynb_checkpoints
-*/*.nyp
+# OS / editors
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Keep notebooks in repo (do NOT ignore notebooks/)
+# notebooks/        <-- intentionally NOT ignored
+
+# If someone accidentally creates big folders inside repo, ignore them:
+data/
+datasets/
+outputs/
+logs/
+runs/
+checkpoints/
+artifacts/
+
+# Common large binaries (store these outside repo)
+*.npz
+*.npy
+*.h5
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.pb
+*.keras
+*.zip
+*.tar
+*.tar.gz
+*.7z
