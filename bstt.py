@@ -26,7 +26,8 @@ class Block(tuple):
 
     @property
     def size(self):
-        return np.product(self.shape)
+        return np.prod(self.shape)
+    #return np.product(self.shape) this is a bug
 
     @property
     def shape(self):
