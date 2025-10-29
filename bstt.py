@@ -146,7 +146,7 @@ class BlockSparseTensor(object):
             return _tuple[:_mode] + _tuple[_mode+1:]
 
         # Store the blocks of the `_mode`-matrification (interpreted as a BlockSparseTensor).
-        indices = np.arange(np.product(notMode(self.shape))).reshape(notMode(self.shape))
+        indices = np.arange(np.prod(notMode(self.shape))).reshape(notMode(self.shape))
         mBlocks = []
         for slc in mSlices:
             idcs = [indices[notMode(blk)].reshape(-1) for blk in self.blocks if blk[_mode].start == slc[0]]
