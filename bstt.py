@@ -1,7 +1,42 @@
 from math import comb
 import numpy as np
 from scipy.sparse import block_diag, diags
+print("bstt.py Last Changes: 19 Dec 1.05 PM")
 
+
+def initialize_sparse_tensor(*shape, density=1, activation_gain = 1):
+    """
+    Initializes a sparse tensor using He/Xavier scaling based on ALL dimensions.
+    
+    Parameters:
+    - shape (tuple): The dimensions of the tensor block.
+    - density (float): The fraction of non-zero elements (0.0 to 1.0).
+    - activation (str): 'relu' for He scaling (2.0) or 'tanh'/'linear' for Xavier (1.0).
+    
+    Returns:
+    - ndarray: The initialized sparse tensor.
+    """
+    # 1. Calculate fan_in using the product of ALL dimensions
+    fan_in = np.prod(shape)
+    
+    # 2. Adjust for density to maintain variance across sparse connections
+    # We use max(..., 1) to ensure we don't divide by zero for empty/scalar shapes
+    effective_fan_in = max(fan_in * density, 0.1)
+    
+    # 3. Determine scaling constant based on activation function
+   
+    gain = activation_gain # notte  # He initialization use 2; Xavier/Glorot uses 1
+    
+    scale = np.sqrt(gain / effective_fan_in)
+    
+    # 4. Generate dense weights from standard normal distribution
+    weights = np.random.randn(*shape) * scale
+    
+    # 5. Create and apply the sparsity mask
+    # binomial(n=1, p=density) creates a mask of 0s and 1s
+    mask = np.random.binomial(1, density, size=shape)
+    
+    return weights * mask
 
 class Block(tuple):
     def __init__(self, iterable):
@@ -240,7 +275,7 @@ class BlockSparseTT(object):
         n = len(_measures[0])
         ret = np.ones((n,1))
         for pos in range(self.order):
-            ret = np.einsum('nl,ler,ne -> nr', ret, self.components[pos], _measures[pos])
+            ret = np.einsum('nl,ler,ne -> nr', ret, self.components[pos], _measures[pos],optimize=True)
         assert ret.shape == (n,1)
         return ret[:,0]
 
@@ -379,7 +414,8 @@ class BlockSparseTT(object):
         components = [np.zeros((leftRank, dimension, rightRank)) for leftRank, dimension, rightRank in zip(ranks[:-1], _dimensions, ranks[1:])]
         for comp, compBlocks in zip(components, _blocks):
             for block in compBlocks:
-                comp[block] = np.random.randn(*comp[block].shape)
+                #comp[block] = np.random.randn(*comp[block].shape)
+                comp[block] = initialize_sparse_tensor(*comp[block].shape)
         return cls(components, _blocks)
     
     
@@ -435,7 +471,7 @@ class BlockSparseTTSystem(object):
         n = len(_measures[0])
         ret = np.ones((n,1,self.numberOfEquations))
         for pos in range(self.order):
-            ret = np.einsum('nld,lemr,md,ne -> nrd', ret, self.components[pos], self.selectionMatrix(pos,self.numberOfEquations), _measures[pos])
+            ret = np.einsum('nld,lemr,md,ne -> nrd', ret, self.components[pos], self.selectionMatrix(pos,self.numberOfEquations), _measures[pos],optimize='optimal')
         assert ret.shape == (n,1,self.numberOfEquations)
         return ret[:,0,:]
 
@@ -579,7 +615,8 @@ class BlockSparseTTSystem(object):
         components = [np.zeros((leftRank, dimension, intrange, rightRank)) for leftRank, dimension,intrange, rightRank in zip(ranks[:-1], _dimensions,_interactionranges, ranks[1:])]
         for comp, compBlocks in zip(components, _blocks):
             for block in compBlocks:
-                comp[block] = np.random.randn(*comp[block].shape)
+                #comp[block] = np.random.randn(*comp[block].shape)
+                comp[block] = initialize_sparse_tensor(*comp[block].shape)
         return cls(components, _blocks,_selectionMatrix,_numberOfEquations)
     
     @classmethod
@@ -633,7 +670,7 @@ class BlockSparseTTSystem2(object):
         for eq in range(self.numberOfEquations):
             for pos in range(self.order):
                 comp = self.bstts[self.selectionMatrix[eq,pos]].components[pos]
-                ret[eq] = np.einsum('ml,ler,me -> mr', ret[eq], comp, _measures[pos])
+                ret[eq] = np.einsum('ml,ler,me -> mr', ret[eq], comp, _measures[pos],optimize=True)
         ret = np.concatenate(ret,axis=1)
         assert ret.shape == (m,self.numberOfEquations)
         return ret[:,:]

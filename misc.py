@@ -3,9 +3,9 @@ from math import comb, factorial
 import numpy as np
 from numpy.polynomial.legendre import legval,legmul,legint,legder
 from numpy.polynomial.hermite_e import hermeval
-
+print("misc.py Last Changes: 19 Dec 12.55 PM")
 from bstt import Block, BlockSparseTT, BlockSparseTTSystem,BlockSparseTTSystem2
-from als import ALS
+#from als import ALS
 
 
 class __block(object):
